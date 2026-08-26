@@ -3,15 +3,17 @@ import { auditDraft } from "../../../shared/seo";
 import { Button } from "@/components/ui/button";
 import ContentEnhancements from "@/components/ContentEnhancements";
 import AdminPayments from "@/components/AdminPayments";
+import VisualStudio from "@/components/VisualStudio";
 import { toast } from "sonner";
-import { BarChart3, Bell, BookOpen, Check, ChevronDown, Clipboard, CreditCard, FileText, HelpCircle, LayoutDashboard, Lightbulb, LockKeyhole, Menu, MoreHorizontal, PenLine, Plus, Search, Settings2, Sparkles, Smartphone, Target, Users, X, Zap } from "lucide-react";
+import { BarChart3, Bell, BookOpen, Check, ChevronDown, Clipboard, CreditCard, FileText, HelpCircle, LayoutDashboard, Lightbulb, LockKeyhole, Menu, MoreHorizontal, PenLine, Plus, Search, Settings2, ImageIcon, Sparkles, Smartphone, Target, Users, X, Zap } from "lucide-react";
 
-type Section = "overview" | "generate" | "brands" | "toolkit" | "seo" | "billing" | "admin";
+type Section = "overview" | "generate" | "brands" | "toolkit" | "visual" | "seo" | "billing" | "admin";
 const nav = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "generate", label: "새 초안 만들기", icon: PenLine },
   { id: "brands", label: "브랜드 & 톤", icon: Sparkles },
   { id: "toolkit", label: "콘텐츠 도구함", icon: Smartphone },
+  { id: "visual", label: "이미지 & SEO 스튜디오", icon: ImageIcon },
   { id: "seo", label: "SEO 가이드", icon: Target },
   { id: "billing", label: "구독 & 이용량", icon: CreditCard },
   { id: "admin", label: "운영 센터", icon: Settings2 },
@@ -67,4 +69,4 @@ function Billing() { const [plan, setPlan] = useState("Growth"); return <div cla
 
 function Admin() { return <div className="space-y-5"><div><p className="text-xs font-bold text-[#e86550]">CONTROL ROOM</p><h2 className="mt-2 text-2xl font-extrabold tracking-[-.05em]">운영 센터</h2><p className="mt-2 text-xs text-[#8a9197]">모든 브랜드가 같은 품질 기준으로 성장하도록 관리합니다.</p></div><AdminPayments/><div className="grid gap-4 md:grid-cols-3">{[["SEO 기준","12개 항목","2024.03.18"],["업종별 프롬프트","8개 템플릿","최근 업데이트"],["추천 키워드 규칙","24개 규칙","정상 작동"]].map(([x,v,d])=><div key={x} className="rounded-xl border border-[#e7e4de] bg-white p-5"><div className="mb-5 flex items-center justify-between"><span className="text-xs font-bold">{x}</span><button onClick={() => toast.info(`${x} 편집 화면을 준비 중입니다.`)}><Settings2 size={15} className="text-[#9ba1a5]"/></button></div><p className="text-xl font-extrabold">{v}</p><p className="mt-2 text-[10px] text-[#92999e]">{d}</p></div>)}</div><div className="rounded-xl border border-[#e7e4de] bg-white"><div className="flex items-center justify-between border-b border-[#eeeae5] px-5 py-4"><h3 className="text-sm font-extrabold">최근 기준 변경 이력</h3><button onClick={() => toast.info("모든 변경 이력을 불러옵니다.")} className="text-[11px] font-bold text-[#e86550]">전체 보기 →</button></div>{[["콘텐츠 품질 기준","제목의 고유성과 키워드 자연스러움 항목을 보강했습니다.","오늘 10:12"],["로컬 서비스 프롬프트","방문 의도·지역 정보 중심의 구조를 추가했습니다.","어제 17:40"],["키워드 반복 규칙","동일 표현 반복 감지 기준을 업데이트했습니다.","3월 18일"]].map(([x,d,t])=><div key={x} className="flex items-center gap-4 border-b border-[#f0ede9] px-5 py-4 last:border-0"><div className="grid h-8 w-8 place-items-center rounded-lg bg-[#f3f1ed] text-[#7d858c]"><Settings2 size={14}/></div><div className="flex-1"><p className="text-xs font-bold">{x}</p><p className="mt-1 text-[10px] text-[#92999e]">{d}</p></div><span className="text-[10px] text-[#a0a5a8]">{t}</span></div>)}</div></div> }
 
-export default function Home() { const [section, setSection] = useState<Section>("overview"); const [open, setOpen] = useState(false); const content = useMemo(() => ({ overview: <Overview setSection={setSection}/>, generate: <Generate/>, brands: <Brands/>, toolkit: <ContentEnhancements/>, seo: <Seo/>, billing: <Billing/>, admin: <Admin/> }[section]), [section]); return <div className="flex min-h-screen bg-[#f8f7f4]"><Sidebar section={section} setSection={setSection} open={open} setOpen={setOpen}/>{open && <div onClick={() => setOpen(false)} className="fixed inset-0 z-20 bg-[#18202b]/20 lg:hidden"/>}<main className="min-w-0 flex-1"><Topbar section={section} setOpen={setOpen}/><div className="mx-auto max-w-[1240px] p-5 lg:p-10">{content}</div></main></div> }
+export default function Home() { const [section, setSection] = useState<Section>("overview"); const [open, setOpen] = useState(false); const content = useMemo(() => ({ overview: <Overview setSection={setSection}/>, generate: <Generate/>, brands: <Brands/>, toolkit: <ContentEnhancements/>, visual: <VisualStudio/>, seo: <Seo/>, billing: <Billing/>, admin: <Admin/> }[section]), [section]); return <div className="flex min-h-screen bg-[#f8f7f4]"><Sidebar section={section} setSection={setSection} open={open} setOpen={setOpen}/>{open && <div onClick={() => setOpen(false)} className="fixed inset-0 z-20 bg-[#18202b]/20 lg:hidden"/>}<main className="min-w-0 flex-1"><Topbar section={section} setOpen={setOpen}/><div className="mx-auto max-w-[1240px] p-5 lg:p-10">{content}</div></main></div> }
