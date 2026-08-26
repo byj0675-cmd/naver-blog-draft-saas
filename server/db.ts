@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { BrandProfile, DraftHistory, InsertBrandProfile, InsertDraftHistory, brandProfiles, draftHistories, InsertUser, subscriptions, users } from "../drizzle/schema";
+import { BrandProfile, DraftHistory, InsertBrandProfile, InsertDraftHistory, InsertToneProfile, brandProfiles, draftHistories, toneProfiles, InsertUser, subscriptions, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -109,6 +109,27 @@ export async function saveDraftHistory(input: InsertDraftHistory) {
   await db.insert(draftHistories).values(input);
   const rows = await db.select().from(draftHistories).where(eq(draftHistories.userId, input.userId));
   return rows.at(-1) ?? null;
+}
+
+export async function saveToneProfile(input: InsertToneProfile) {
+  const db = await getDb();
+  if (!db) return null;
+  await db.insert(toneProfiles).values(input);
+  const rows = await db.select().from(toneProfiles).where(eq(toneProfiles.brandId, input.brandId));
+  return rows.at(-1) ?? null;
+}
+
+export async function getToneProfile(brandId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(toneProfiles).where(eq(toneProfiles.brandId, brandId)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function listDraftHistories(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(draftHistories).where(eq(draftHistories.userId, userId));
 }
 
 export async function getSubscription(userId: number) {

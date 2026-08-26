@@ -72,6 +72,7 @@ export const subscriptions = mysqlTable("subscriptions", {
 
 export type InsertBrandProfile = typeof brandProfiles.$inferInsert;
 export type InsertDraftHistory = typeof draftHistories.$inferInsert;
+export type InsertToneProfile = typeof toneProfiles.$inferInsert;
 export type BrandProfile = typeof brandProfiles.$inferSelect;
 export type ToneProfile = typeof toneProfiles.$inferSelect;
 export type DraftHistory = typeof draftHistories.$inferSelect;

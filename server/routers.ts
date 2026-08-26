@@ -4,7 +4,7 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
-import { createBrandProfile, listBrandProfiles, saveDraftHistory } from "./db";
+import { createBrandProfile, getSubscription, getToneProfile, listBrandProfiles, listDraftHistories, saveDraftHistory, saveToneProfile } from "./db";
 
 const draftSchema = z.object({
   brand: z.object({ name: z.string(), industry: z.string().optional(), services: z.string().optional(), audience: z.string().optional(), strengths: z.string().optional(), tone: z.string().optional() }),
@@ -20,6 +20,7 @@ export const appRouter = router({
   brands: router({
     list: protectedProcedure.query(({ ctx }) => listBrandProfiles(ctx.user.id)),
     create: protectedProcedure.input(z.object({ name: z.string().min(1), industry: z.string().optional(), services: z.string().optional(), audience: z.string().optional(), strengths: z.string().optional() })).mutation(({ ctx, input }) => createBrandProfile({ ...input, userId: ctx.user.id })),
+    tone: protectedProcedure.input(z.object({ brandId: z.number() })).query(({ input }) => getToneProfile(input.brandId)),
   }),
   content: router({
     generate: protectedProcedure.input(draftSchema).mutation(async ({ ctx, input }) => {
@@ -35,7 +36,14 @@ export const appRouter = router({
       return { draft, creditsUsed: 1, userId: ctx.user.id };
     }),
     save: protectedProcedure.input(z.object({ brandId: z.number(), title: z.string(), intro: z.string(), body: z.string(), ending: z.string(), hashtags: z.string(), keywords: z.string(), seoScore: z.number() })).mutation(({ ctx, input }) => saveDraftHistory({ ...input, userId: ctx.user.id })),
+    history: protectedProcedure.query(({ ctx }) => listDraftHistories(ctx.user.id)),
+    analyzeTone: protectedProcedure.input(z.object({ brandId: z.number(), samples: z.array(z.string()).min(1) })).mutation(async ({ input }) => {
+      const response = await invokeLLM({ messages: [{ role: "system", content: "한국어 블로그 글 샘플의 말투, 문장 길이, 구성, 표현 습관을 JSON으로 분석합니다." }, { role: "user", content: input.samples.join("\n\n") }], response_format: { type: "json_schema", json_schema: { name: "tone_profile", strict: true, schema: { type: "object", properties: { summary: { type: "string" }, sentenceLength: { type: "string" }, patterns: { type: "array", items: { type: "string" } } }, required: ["summary", "sentenceLength", "patterns"], additionalProperties: false } } } });
+      const profileJson = typeof response.choices?.[0]?.message?.content === "string" ? response.choices[0].message.content : JSON.stringify(response.choices?.[0]?.message?.content ?? {});
+      return saveToneProfile({ brandId: input.brandId, sampleCount: input.samples.length, profileJson });
+    }),
   }),
+  billing: router({ current: protectedProcedure.query(({ ctx }) => getSubscription(ctx.user.id)) }),
 });
 
 export type AppRouter = typeof appRouter;
