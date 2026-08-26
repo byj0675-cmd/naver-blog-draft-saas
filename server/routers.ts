@@ -1,10 +1,12 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { invokeLLM } from "./_core/llm";
-import { createBrandProfile, getSubscription, getToneProfile, listBrandProfiles, listDraftHistories, saveDraftHistory, saveToneProfile } from "./db";
+import { invokeTextModel } from "./aiProvider";
+import { generateImage } from "./_core/imageGeneration";
+import { createBrandProfile, getSubscription, getToneProfile, listBrandProfiles, listDraftHistories, saveDraftHistory, saveToneProfile, reserveDraftRegeneration, releaseDraftRegeneration, reserveMonthlyGeneration, releaseMonthlyGeneration, createPaymentRequest, listPaymentRequests, reviewPaymentRequest } from "./db";
 
 const draftSchema = z.object({
   brand: z.object({ name: z.string(), industry: z.string().optional(), services: z.string().optional(), audience: z.string().optional(), strengths: z.string().optional(), tone: z.string().optional() }),
@@ -23,8 +25,20 @@ export const appRouter = router({
     tone: protectedProcedure.input(z.object({ brandId: z.number() })).query(({ input }) => getToneProfile(input.brandId)),
   }),
   content: router({
-    generate: protectedProcedure.input(draftSchema).mutation(async ({ ctx, input }) => {
-      const response = await invokeLLM({
+    generate: protectedProcedure.input(draftSchema.extend({ draftId: z.number().optional(), regenerate: z.boolean().default(false) })).mutation(async ({ ctx, input }) => {
+      const monthly = await reserveMonthlyGeneration(ctx.user.id, 12);
+      if (!monthly.allowed) throw new TRPCError({ code: "FORBIDDEN", message: "이번 달 생성 한도(12건)를 모두 사용했습니다." });
+      let regenerationReserved = false;
+      if (input.regenerate && input.draftId) {
+        const regeneration = await reserveDraftRegeneration(ctx.user.id, input.draftId, 3);
+        if (!regeneration.allowed) {
+          await releaseMonthlyGeneration(ctx.user.id, monthly.periodKey);
+          throw new TRPCError({ code: "FORBIDDEN", message: "이 초안의 재생성 한도(3회)를 모두 사용했습니다." });
+        }
+        regenerationReserved = true;
+      }
+      try {
+      const response = await invokeTextModel({
         messages: [
           { role: "system", content: "당신은 네이버 블로그 편집자입니다. 검색엔진만을 위한 키워드 나열을 피하고 독자에게 유용한 한국어 콘텐츠를 작성합니다. 반드시 JSON 형식으로 title, intro, body, ending, hashtags를 반환합니다." },
           { role: "user", content: `브랜드: ${JSON.stringify(input.brand)}\n핵심 키워드: ${input.primaryKeyword}\n보조 키워드: ${input.secondaryKeywords.join(", ")}\n목적: ${input.purpose}\n분량: ${input.length}\n톤: ${input.brand.tone ?? "차분하고 진정성 있는 존댓말"}` },
@@ -33,10 +47,16 @@ export const appRouter = router({
       });
       const content = response.choices?.[0]?.message?.content;
       const draft = typeof content === "string" ? JSON.parse(content) : content;
-      return { draft, creditsUsed: 1, userId: ctx.user.id };
+      return { draft, creditsUsed: 1, monthlyUsed: monthly.used, regenerationsUsed: regenerationReserved ? 1 : 0, userId: ctx.user.id };
+      } catch (error) {
+        await releaseMonthlyGeneration(ctx.user.id, monthly.periodKey);
+        if (regenerationReserved && input.draftId) await releaseDraftRegeneration(ctx.user.id, input.draftId);
+        throw error;
+      }
     }),
     save: protectedProcedure.input(z.object({ brandId: z.number(), title: z.string(), intro: z.string(), body: z.string(), ending: z.string(), hashtags: z.string(), keywords: z.string(), seoScore: z.number() })).mutation(({ ctx, input }) => saveDraftHistory({ ...input, userId: ctx.user.id })),
     history: protectedProcedure.query(({ ctx }) => listDraftHistories(ctx.user.id)),
+    generateVisual: protectedProcedure.input(z.object({ prompt: z.string().min(1), originalImageUrl: z.string().url().optional() })).mutation(async ({ input }) => generateImage({ prompt: input.prompt, originalImages: input.originalImageUrl ? [{ url: input.originalImageUrl, mimeType: "image/jpeg" }] : undefined })),
     analyzeUrl: protectedProcedure.input(z.object({ url: z.string().url() })).mutation(async ({ input }) => {
       const parsed = new URL(input.url);
       if (!/(^|\\.)blog\\.naver\\.com$/.test(parsed.hostname) && parsed.hostname !== "m.blog.naver.com") throw new Error("네이버 블로그 URL만 분석할 수 있습니다.");
@@ -48,12 +68,17 @@ export const appRouter = router({
       return { url: input.url, text: text.slice(0, 18000), characterCount: text.length };
     }),
     analyzeTone: protectedProcedure.input(z.object({ brandId: z.number(), samples: z.array(z.string()).min(1) })).mutation(async ({ input }) => {
-      const response = await invokeLLM({ messages: [{ role: "system", content: "한국어 블로그 글 샘플의 말투, 문장 길이, 구성, 표현 습관을 JSON으로 분석합니다." }, { role: "user", content: input.samples.join("\n\n") }], response_format: { type: "json_schema", json_schema: { name: "tone_profile", strict: true, schema: { type: "object", properties: { summary: { type: "string" }, sentenceLength: { type: "string" }, patterns: { type: "array", items: { type: "string" } } }, required: ["summary", "sentenceLength", "patterns"], additionalProperties: false } } } });
+      const response = await invokeTextModel({ messages: [{ role: "system", content: "한국어 블로그 글 샘플의 말투, 문장 길이, 구성, 표현 습관을 JSON으로 분석합니다." }, { role: "user", content: input.samples.join("\n\n") }], response_format: { type: "json_schema", json_schema: { name: "tone_profile", strict: true, schema: { type: "object", properties: { summary: { type: "string" }, sentenceLength: { type: "string" }, patterns: { type: "array", items: { type: "string" } } }, required: ["summary", "sentenceLength", "patterns"], additionalProperties: false } } } });
       const profileJson = typeof response.choices?.[0]?.message?.content === "string" ? response.choices[0].message.content : JSON.stringify(response.choices?.[0]?.message?.content ?? {});
       return saveToneProfile({ brandId: input.brandId, sampleCount: input.samples.length, profileJson });
     }),
   }),
-  billing: router({ current: protectedProcedure.query(({ ctx }) => getSubscription(ctx.user.id)) }),
+  billing: router({
+    current: protectedProcedure.query(({ ctx }) => getSubscription(ctx.user.id)),
+    requestManual: protectedProcedure.input(z.object({ plan: z.string().min(1), amount: z.number().int().positive(), payerName: z.string().min(1), note: z.string().optional() })).mutation(({ ctx, input }) => createPaymentRequest({ ...input, userId: ctx.user.id, status: "pending" })),
+    adminList: protectedProcedure.query(({ ctx }) => { if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" }); return listPaymentRequests(); }),
+    adminReview: protectedProcedure.input(z.object({ id: z.number(), status: z.enum(["approved", "rejected"]), note: z.string().optional() })).mutation(({ ctx, input }) => { if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" }); return reviewPaymentRequest(input.id, ctx.user.id, input.status, input.note); }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

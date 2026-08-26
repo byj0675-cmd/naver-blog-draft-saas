@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq, lt, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { BrandProfile, DraftHistory, InsertBrandProfile, InsertDraftHistory, InsertToneProfile, brandProfiles, draftHistories, toneProfiles, InsertUser, subscriptions, users } from "../drizzle/schema";
+import { BrandProfile, DraftHistory, InsertBrandProfile, InsertDraftHistory, InsertToneProfile, brandProfiles, draftHistories, toneProfiles, InsertUser, subscriptions, users, usageCounters, paymentRequests, InsertPaymentRequest } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -130,6 +130,72 @@ export async function listDraftHistories(userId: number) {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(draftHistories).where(eq(draftHistories.userId, userId));
+}
+
+export async function reserveMonthlyGeneration(userId: number, limit = 12) {
+  const db = await getDb();
+  if (!db) return { allowed: true, used: 0, periodKey: currentPeriodKey() };
+  const periodKey = currentPeriodKey();
+  await db.insert(usageCounters).values({ userId, periodKey, generationCount: 0 }).onDuplicateKeyUpdate({ set: { generationCount: sql`generationCount` } });
+  const result = await db.update(usageCounters).set({ generationCount: sql`generationCount + 1` }).where(and(eq(usageCounters.userId, userId), eq(usageCounters.periodKey, periodKey), lt(usageCounters.generationCount, limit)));
+  const rows = await db.select().from(usageCounters).where(and(eq(usageCounters.userId, userId), eq(usageCounters.periodKey, periodKey))).limit(1);
+  const used = rows[0]?.generationCount ?? 0;
+  return { allowed: result[0]?.affectedRows === 1, used, periodKey };
+}
+
+export async function releaseMonthlyGeneration(userId: number, periodKey: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(usageCounters).set({ generationCount: sql`GREATEST(generationCount - 1, 0)` }).where(and(eq(usageCounters.userId, userId), eq(usageCounters.periodKey, periodKey), gtZero()));
+}
+
+function gtZero() { return sql`generationCount > 0`; }
+function currentPeriodKey() { return new Date().toISOString().slice(0, 7); }
+
+export async function reserveDraftRegeneration(userId: number, draftId: number, limit = 3) {
+  const db = await getDb();
+  if (!db) return { allowed: true, used: 0 };
+  const result = await db.update(draftHistories).set({ regenerationCount: sql`regenerationCount + 1` }).where(and(eq(draftHistories.id, draftId), eq(draftHistories.userId, userId), lt(draftHistories.regenerationCount, limit)));
+  const rows = await db.select({ count: draftHistories.regenerationCount }).from(draftHistories).where(and(eq(draftHistories.id, draftId), eq(draftHistories.userId, userId))).limit(1);
+  return { allowed: result[0]?.affectedRows === 1, used: rows[0]?.count ?? 0 };
+}
+
+export async function releaseDraftRegeneration(userId: number, draftId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(draftHistories).set({ regenerationCount: sql`GREATEST(regenerationCount - 1, 0)` }).where(and(eq(draftHistories.id, draftId), eq(draftHistories.userId, userId), sql`regenerationCount > 0`));
+}
+
+export async function createPaymentRequest(input: InsertPaymentRequest) {
+  const db = await getDb();
+  if (!db) return null;
+  await db.insert(paymentRequests).values(input);
+  const rows = await db.select().from(paymentRequests).where(eq(paymentRequests.userId, input.userId)).orderBy(desc(paymentRequests.id)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function listPaymentRequests() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(paymentRequests).orderBy(desc(paymentRequests.requestedAt));
+}
+
+export async function reviewPaymentRequest(id: number, adminId: number, status: "approved" | "rejected", note?: string) {
+  const db = await getDb();
+  if (!db) return null;
+  await db.update(paymentRequests).set({ status, note: note ?? null, reviewedBy: adminId, reviewedAt: new Date() }).where(eq(paymentRequests.id, id));
+  const rows = await db.select().from(paymentRequests).where(eq(paymentRequests.id, id)).limit(1);
+  const request = rows[0] ?? null;
+  if (request?.status === "approved") {
+    const creditsTotal = request.plan.toLowerCase() === "studio" ? 300 : request.plan.toLowerCase() === "starter" ? 30 : 100;
+    const existing = await db.select().from(subscriptions).where(eq(subscriptions.userId, request.userId)).limit(1);
+    if (existing[0]) {
+      await db.update(subscriptions).set({ plan: request.plan, creditsTotal, creditsUsed: 0, status: "active", paymentProvider: "manual" }).where(eq(subscriptions.id, existing[0].id));
+    } else {
+      await db.insert(subscriptions).values({ userId: request.userId, plan: request.plan, creditsTotal, creditsUsed: 0, status: "active", paymentProvider: "manual" });
+    }
+  }
+  return request;
 }
 
 export async function getSubscription(userId: number) {

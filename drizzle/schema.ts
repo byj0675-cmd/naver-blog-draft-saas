@@ -1,4 +1,4 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { int, mysqlEnum, mysqlTable, text, timestamp, varchar, uniqueIndex } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -56,7 +56,29 @@ export const draftHistories = mysqlTable("draftHistories", {
   hashtags: text("hashtags").notNull(),
   keywords: text("keywords").notNull(),
   seoScore: int("seoScore").default(0).notNull(),
+  regenerationCount: int("regenerationCount").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const usageCounters = mysqlTable("usageCounters", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  periodKey: varchar("periodKey", { length: 7 }).notNull(),
+  generationCount: int("generationCount").default(0).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, (table) => ({ userPeriodUnique: uniqueIndex("userPeriodUnique").on(table.userId, table.periodKey) }));
+
+export const paymentRequests = mysqlTable("paymentRequests", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  plan: varchar("plan", { length: 40 }).notNull(),
+  amount: int("amount").notNull(),
+  payerName: varchar("payerName", { length: 80 }).notNull(),
+  status: mysqlEnum("status", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  note: text("note"),
+  reviewedBy: int("reviewedBy"),
+  requestedAt: timestamp("requestedAt").defaultNow().notNull(),
+  reviewedAt: timestamp("reviewedAt"),
 });
 
 export const subscriptions = mysqlTable("subscriptions", {
@@ -77,3 +99,6 @@ export type BrandProfile = typeof brandProfiles.$inferSelect;
 export type ToneProfile = typeof toneProfiles.$inferSelect;
 export type DraftHistory = typeof draftHistories.$inferSelect;
 export type Subscription = typeof subscriptions.$inferSelect;
+export type UsageCounter = typeof usageCounters.$inferSelect;
+export type PaymentRequest = typeof paymentRequests.$inferSelect;
+export type InsertPaymentRequest = typeof paymentRequests.$inferInsert;
