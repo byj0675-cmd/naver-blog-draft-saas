@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { BrandProfile, DraftHistory, InsertBrandProfile, InsertDraftHistory, brandProfiles, draftHistories, InsertUser, subscriptions, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,31 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+export async function listBrandProfiles(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(brandProfiles).where(eq(brandProfiles.userId, userId));
+}
+
+export async function createBrandProfile(input: InsertBrandProfile) {
+  const db = await getDb();
+  if (!db) return null;
+  await db.insert(brandProfiles).values(input);
+  const rows = await db.select().from(brandProfiles).where(eq(brandProfiles.userId, input.userId));
+  return rows.at(-1) ?? null;
+}
+
+export async function saveDraftHistory(input: InsertDraftHistory) {
+  const db = await getDb();
+  if (!db) return null;
+  await db.insert(draftHistories).values(input);
+  const rows = await db.select().from(draftHistories).where(eq(draftHistories.userId, input.userId));
+  return rows.at(-1) ?? null;
+}
+
+export async function getSubscription(userId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(subscriptions).where(eq(subscriptions.userId, userId)).limit(1);
+  return rows[0] ?? null;
+}

@@ -1,0 +1,10 @@
+import fs from 'node:fs';
+const path = '/home/ubuntu/naver-blog-draft-saas/client/src/pages/Home.tsx';
+const replacement = fs.readFileSync('/home/ubuntu/naver-blog-draft-saas/scripts/generate-replacement.txt', 'utf8');
+let source = fs.readFileSync(path, 'utf8');
+source = source.replace('import { useMemo, useState } from "react";', 'import { useMemo, useState } from "react";\nimport { auditDraft } from "@/../shared/seo";');
+const start = source.indexOf('function Generate() {');
+const end = source.indexOf('\nfunction Brands()', start);
+if (start < 0 || end < 0) throw new Error('Generate markers not found');
+source = source.slice(0, start) + replacement.trimEnd() + source.slice(end);
+fs.writeFileSync(path, source);
