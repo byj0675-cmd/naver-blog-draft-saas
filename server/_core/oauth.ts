@@ -1,7 +1,9 @@
-import { COOKIE_NAME, ONE_YEAR_MS, OAUTH_STATE_COOKIE, decodeOAuthState } from "@shared/const";
+import { COOKIE_NAME, ONE_YEAR_MS, OAUTH_STATE_COOKIE, decodeOAuthState, encodeOAuthState } from "@shared/const";
 import { parse as parseCookieHeader } from "cookie";
+import crypto from "node:crypto";
 import type { Express, Request, Response } from "express";
 import * as db from "../db";
+import { ENV } from "./env";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
 
@@ -10,52 +12,85 @@ function getQueryParam(req: Request, key: string): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
+function kakaoRedirectUri(req: Request) {
+  return ENV.kakaoRedirectUri || `${req.protocol}://${req.get("host")}/api/auth/kakao/callback`;
+}
+
 export function registerOAuthRoutes(app: Express) {
-  app.get("/api/oauth/callback", async (req: Request, res: Response) => {
+  app.get("/api/auth/kakao/start", (req: Request, res: Response) => {
+    if (!ENV.kakaoRestApiKey) {
+      res.status(503).json({ error: "Kakao REST API key is not configured" });
+      return;
+    }
+    const redirectUri = kakaoRedirectUri(req);
+    const nonce = crypto.randomUUID();
+    const state = encodeOAuthState({ redirectUri, nonce });
+    res.cookie(OAUTH_STATE_COOKIE, nonce, { httpOnly: true, secure: true, sameSite: "none", path: "/", maxAge: 600_000 });
+    const url = new URL("https://kauth.kakao.com/oauth/authorize");
+    url.searchParams.set("client_id", ENV.kakaoRestApiKey);
+    url.searchParams.set("redirect_uri", redirectUri);
+    url.searchParams.set("response_type", "code");
+    url.searchParams.set("state", state);
+    res.redirect(302, url.toString());
+  });
+
+  app.get("/api/auth/kakao/callback", async (req: Request, res: Response) => {
     const code = getQueryParam(req, "code");
     const state = getQueryParam(req, "state");
-
+    const kakaoError = getQueryParam(req, "error");
+    if (kakaoError) {
+      res.redirect(302, `/?authError=${encodeURIComponent(kakaoError)}`);
+      return;
+    }
     if (!code || !state) {
       res.status(400).json({ error: "code and state are required" });
       return;
     }
-
-    // CSRF guard: the nonce in `state` must match the one-time cookie that
-    // startLogin set in the browser that began this login. An attacker can
-    // forge `state`, but cannot plant this cookie in the victim's browser.
-    const { nonce } = decodeOAuthState(state);
+    const decodedState = decodeOAuthState(state);
     const expectedNonce = parseCookieHeader(req.headers.cookie ?? "")[OAUTH_STATE_COOKIE];
-    if (!nonce || nonce !== expectedNonce) {
-      res.status(403).json({ error: "invalid oauth state" });
+    if (!decodedState.nonce || decodedState.nonce !== expectedNonce || decodedState.redirectUri !== kakaoRedirectUri(req)) {
+      res.status(403).json({ error: "invalid kakao oauth state" });
       return;
     }
     res.clearCookie(OAUTH_STATE_COOKIE, { path: "/", secure: true, sameSite: "none" });
 
     try {
+      const tokenBody = new URLSearchParams({ grant_type: "authorization_code", client_id: ENV.kakaoRestApiKey, redirect_uri: decodedState.redirectUri, code });
+      if (ENV.kakaoClientSecret) tokenBody.set("client_secret", ENV.kakaoClientSecret);
+      const tokenResponse = await fetch("https://kauth.kakao.com/oauth/token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded;charset=utf-8" }, body: tokenBody });
+      const token = await tokenResponse.json() as { access_token?: string; error_description?: string };
+      if (!tokenResponse.ok || !token.access_token) throw new Error(token.error_description || "Kakao token exchange failed");
+
+      const profileResponse = await fetch("https://kapi.kakao.com/v2/user/me", { headers: { Authorization: `Bearer ${token.access_token}` } });
+      const profile = await profileResponse.json() as { id?: number; kakao_account?: { email?: string; profile?: { nickname?: string } }; properties?: { nickname?: string } };
+      if (!profileResponse.ok || !profile.id) throw new Error("Kakao profile lookup failed");
+      const openId = `kakao:${profile.id}`;
+      const name = profile.kakao_account?.profile?.nickname || profile.properties?.nickname || "카카오 사용자";
+      await db.upsertUser({ openId, name, email: profile.kakao_account?.email ?? null, loginMethod: "kakao", lastSignedIn: new Date() });
+      const sessionToken = await sdk.createSessionToken(openId, { name, expiresInMs: ONE_YEAR_MS });
+      res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
+      res.redirect(302, "/");
+    } catch (error) {
+      console.error("[Kakao OAuth] Callback failed", error);
+      res.status(502).json({ error: "Kakao login failed" });
+    }
+  });
+
+  app.get("/api/oauth/callback", async (req: Request, res: Response) => {
+    const code = getQueryParam(req, "code");
+    const state = getQueryParam(req, "state");
+    if (!code || !state) { res.status(400).json({ error: "code and state are required" }); return; }
+    const { nonce } = decodeOAuthState(state);
+    const expectedNonce = parseCookieHeader(req.headers.cookie ?? "")[OAUTH_STATE_COOKIE];
+    if (!nonce || nonce !== expectedNonce) { res.status(403).json({ error: "invalid oauth state" }); return; }
+    res.clearCookie(OAUTH_STATE_COOKIE, { path: "/", secure: true, sameSite: "none" });
+    try {
       const tokenResponse = await sdk.exchangeCodeForToken(code, state);
       const userInfo = await sdk.getUserInfo(tokenResponse.accessToken);
-
-      if (!userInfo.openId) {
-        res.status(400).json({ error: "openId missing from user info" });
-        return;
-      }
-
-      await db.upsertUser({
-        openId: userInfo.openId,
-        name: userInfo.name || null,
-        email: userInfo.email ?? null,
-        loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null,
-        lastSignedIn: new Date(),
-      });
-
-      const sessionToken = await sdk.createSessionToken(userInfo.openId, {
-        name: userInfo.name || "",
-        expiresInMs: ONE_YEAR_MS,
-      });
-
-      const cookieOptions = getSessionCookieOptions(req);
-      res.cookie(COOKIE_NAME, sessionToken, { ...cookieOptions, maxAge: ONE_YEAR_MS });
-
+      if (!userInfo.openId) { res.status(400).json({ error: "openId missing from user info" }); return; }
+      await db.upsertUser({ openId: userInfo.openId, name: userInfo.name || null, email: userInfo.email ?? null, loginMethod: userInfo.loginMethod ?? userInfo.platform ?? null, lastSignedIn: new Date() });
+      const sessionToken = await sdk.createSessionToken(userInfo.openId, { name: userInfo.name || "", expiresInMs: ONE_YEAR_MS });
+      res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
       res.redirect(302, "/");
     } catch (error) {
       console.error("[OAuth] Callback failed", error);
