@@ -37,6 +37,16 @@ export const appRouter = router({
     }),
     save: protectedProcedure.input(z.object({ brandId: z.number(), title: z.string(), intro: z.string(), body: z.string(), ending: z.string(), hashtags: z.string(), keywords: z.string(), seoScore: z.number() })).mutation(({ ctx, input }) => saveDraftHistory({ ...input, userId: ctx.user.id })),
     history: protectedProcedure.query(({ ctx }) => listDraftHistories(ctx.user.id)),
+    analyzeUrl: protectedProcedure.input(z.object({ url: z.string().url() })).mutation(async ({ input }) => {
+      const parsed = new URL(input.url);
+      if (!/(^|\\.)blog\\.naver\\.com$/.test(parsed.hostname) && parsed.hostname !== "m.blog.naver.com") throw new Error("네이버 블로그 URL만 분석할 수 있습니다.");
+      const response = await fetch(input.url, { headers: { "User-Agent": "Mozilla/5.0 blogmate-content-reader" } });
+      if (!response.ok) throw new Error(`본문을 가져오지 못했습니다. (${response.status})`);
+      const html = await response.text();
+      const text = html.replace(/<[^>]*>/g, " ").replace(/&nbsp;/g, " ").replace(/\\s+/g, " ").trim();
+      if (text.length < 80) throw new Error("본문이 비어 있거나 수집할 수 없는 글입니다.");
+      return { url: input.url, text: text.slice(0, 18000), characterCount: text.length };
+    }),
     analyzeTone: protectedProcedure.input(z.object({ brandId: z.number(), samples: z.array(z.string()).min(1) })).mutation(async ({ input }) => {
       const response = await invokeLLM({ messages: [{ role: "system", content: "한국어 블로그 글 샘플의 말투, 문장 길이, 구성, 표현 습관을 JSON으로 분석합니다." }, { role: "user", content: input.samples.join("\n\n") }], response_format: { type: "json_schema", json_schema: { name: "tone_profile", strict: true, schema: { type: "object", properties: { summary: { type: "string" }, sentenceLength: { type: "string" }, patterns: { type: "array", items: { type: "string" } } }, required: ["summary", "sentenceLength", "patterns"], additionalProperties: false } } } });
       const profileJson = typeof response.choices?.[0]?.message?.content === "string" ? response.choices[0].message.content : JSON.stringify(response.choices?.[0]?.message?.content ?? {});
