@@ -6,7 +6,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { invokeTextModel } from "./aiProvider";
 import { generateImage } from "./_core/imageGeneration";
-import { createBrandProfile, getSubscription, getToneProfile, listBrandProfiles, listDraftHistories, saveDraftHistory, saveToneProfile, reserveDraftRegeneration, releaseDraftRegeneration, reserveMonthlyGeneration, releaseMonthlyGeneration, createPaymentRequest, listPaymentRequests, reviewPaymentRequest } from "./db";
+import { createBrandProfile, getSubscription, getToneProfile, listBrandProfiles, listDraftHistories, saveDraftHistory, saveToneProfile, reserveDraftRegeneration, releaseDraftRegeneration, reserveMonthlyGeneration, releaseMonthlyGeneration, createPaymentRequest, listPaymentRequests, reviewPaymentRequest, getMonthlyUsage } from "./db";
 
 const draftSchema = z.object({
   brand: z.object({ name: z.string(), industry: z.string().optional(), services: z.string().optional(), audience: z.string().optional(), strengths: z.string().optional(), tone: z.string().optional() }),
@@ -72,6 +72,9 @@ export const appRouter = router({
       const profileJson = typeof response.choices?.[0]?.message?.content === "string" ? response.choices[0].message.content : JSON.stringify(response.choices?.[0]?.message?.content ?? {});
       return saveToneProfile({ brandId: input.brandId, sampleCount: input.samples.length, profileJson });
     }),
+  }),
+  usage: router({
+    current: protectedProcedure.query(({ ctx }) => getMonthlyUsage(ctx.user.id, 12)),
   }),
   billing: router({
     current: protectedProcedure.query(({ ctx }) => getSubscription(ctx.user.id)),

@@ -150,7 +150,16 @@ export async function releaseMonthlyGeneration(userId: number, periodKey: string
 }
 
 function gtZero() { return sql`generationCount > 0`; }
-function currentPeriodKey() { return new Date().toISOString().slice(0, 7); }
+export function currentPeriodKey() { return new Date().toISOString().slice(0, 7); }
+
+export async function getMonthlyUsage(userId: number, limit = 12) {
+  const db = await getDb();
+  const periodKey = currentPeriodKey();
+  if (!db) return { periodKey, used: 0, limit, remaining: limit };
+  const rows = await db.select({ used: usageCounters.generationCount }).from(usageCounters).where(and(eq(usageCounters.userId, userId), eq(usageCounters.periodKey, periodKey))).limit(1);
+  const used = rows[0]?.used ?? 0;
+  return { periodKey, used, limit, remaining: Math.max(0, limit - used) };
+}
 
 export async function reserveDraftRegeneration(userId: number, draftId: number, limit = 3) {
   const db = await getDb();
