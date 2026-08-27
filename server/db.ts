@@ -192,7 +192,10 @@ export async function createPaymentRequest(input: InsertPaymentRequest) {
 export async function listPaymentRequests() {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(paymentRequests).orderBy(desc(paymentRequests.requestedAt));
+  const requests = await db.select().from(paymentRequests).orderBy(desc(paymentRequests.requestedAt));
+  const customerRows = await db.select({ id: users.id, name: users.name }).from(users);
+  const names = new Map(customerRows.map(customer => [customer.id, customer.name ?? ""]));
+  return requests.map(request => ({ ...request, userName: names.get(request.userId) ?? "" }));
 }
 
 export async function markPaymentPaid(id: number) {
