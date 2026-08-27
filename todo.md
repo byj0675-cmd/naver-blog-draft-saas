@@ -143,3 +143,15 @@
 
 - [x] adminMarkSent→adminMarkPaid→adminReview 승인 순서의 실제 서버 절차 테스트
 - [x] 운영 센터에서 청구서 발송·수납 확인·승인 완료 라벨과 버튼을 브라우저 검증
+
+## JSON mutation 오류 수정
+
+- [x] 홈 화면 mutation에서 발생한 Unexpected end of JSON input 원인 추적
+- [x] 빈 응답·비JSON 오류 응답에 대한 안전한 처리 추가
+- [x] 해당 mutation 회귀 테스트와 브라우저 오류 재검증
+
+## DeepSeek HTTP 응답 방어 보강
+
+- [x] DeepSeek 빈·비JSON HTTP 응답을 명확한 오류로 변환
+- [x] DeepSeek HTTP 응답 파싱 회귀 테스트 추가
+- [x] 실제 content.generate mutation 재실행 검증

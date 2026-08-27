@@ -4,7 +4,7 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
-import { invokeTextModel } from "./aiProvider";
+import { invokeTextModel, parseModelJson } from "./aiProvider";
 import { generateImage } from "./_core/imageGeneration";
 import { createBrandProfile, getSubscription, getToneProfile, listBrandProfiles, listDraftHistories, saveDraftHistory, saveToneProfile, reserveDraftRegeneration, releaseDraftRegeneration, reserveMonthlyGeneration, releaseMonthlyGeneration, createPaymentRequest, listPaymentRequests, markPaymentSent, markPaymentPaid, reviewPaymentRequest, getMonthlyUsage } from "./db";
 
@@ -48,7 +48,7 @@ export const appRouter = router({
         response_format: { type: "json_schema", json_schema: { name: "naver_blog_draft", strict: true, schema: { type: "object", properties: { title: { type: "string" }, intro: { type: "string" }, body: { type: "string" }, ending: { type: "string" }, hashtags: { type: "string" } }, required: ["title", "intro", "body", "ending", "hashtags"], additionalProperties: false } } },
       });
       const content = response.choices?.[0]?.message?.content;
-      const draft = typeof content === "string" ? JSON.parse(content) : content;
+      const draft = parseModelJson<{ title: string; intro: string; body: string; ending: string; hashtags: string }>(content);
       return { draft, creditsUsed: 1, monthlyUsed: monthly.used, regenerationsUsed: regenerationReserved ? 1 : 0, userId: ctx.user.id };
       } catch (error) {
         await releaseMonthlyGeneration(ctx.user.id, input.brandId, monthly.periodKey);
@@ -71,8 +71,8 @@ export const appRouter = router({
     }),
     analyzeTone: protectedProcedure.input(z.object({ brandId: z.number(), samples: z.array(z.string()).min(1) })).mutation(async ({ input }) => {
       const response = await invokeTextModel({ messages: [{ role: "system", content: "한국어 블로그 글 샘플의 말투, 문장 길이, 구성, 표현 습관을 JSON으로 분석합니다." }, { role: "user", content: input.samples.join("\n\n") }], response_format: { type: "json_schema", json_schema: { name: "tone_profile", strict: true, schema: { type: "object", properties: { summary: { type: "string" }, sentenceLength: { type: "string" }, patterns: { type: "array", items: { type: "string" } } }, required: ["summary", "sentenceLength", "patterns"], additionalProperties: false } } } });
-      const profileJson = typeof response.choices?.[0]?.message?.content === "string" ? response.choices[0].message.content : JSON.stringify(response.choices?.[0]?.message?.content ?? {});
-      return saveToneProfile({ brandId: input.brandId, sampleCount: input.samples.length, profileJson });
+      const profile = parseModelJson<{ summary: string; sentenceLength: string; patterns: string[] }>(response.choices?.[0]?.message?.content);
+      return saveToneProfile({ brandId: input.brandId, sampleCount: input.samples.length, profileJson: JSON.stringify(profile) });
     }),
   }),
   usage: router({
