@@ -155,3 +155,9 @@
 - [x] DeepSeek 빈·비JSON HTTP 응답을 명확한 오류로 변환
 - [x] DeepSeek HTTP 응답 파싱 회귀 테스트 추가
 - [x] 실제 content.generate mutation 재실행 검증
+
+## GitHub 내보내기
+
+- [ ] GitHub 계정 연결 및 내보내기 대상 저장소 지정
+- [ ] 최신 체크포인트 코드 GitHub 내보내기
+- [ ] Claude Code 로컬 실행을 위한 안전한 환경변수 안내
