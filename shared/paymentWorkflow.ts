@@ -9,3 +9,10 @@ export function collectionLabel(paymentStatus: PaymentCollectionStatus) {
   if (paymentStatus === "sent") return "청구서 발송";
   return "청구서 미발송";
 }
+
+export function transitionCollectionStatus(current: PaymentCollectionStatus, next: PaymentCollectionStatus) {
+  if (current === next) return current;
+  if (current === "not_sent" && next === "sent") return next;
+  if (current === "sent" && next === "paid") return next;
+  return null;
+}

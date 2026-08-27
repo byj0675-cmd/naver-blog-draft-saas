@@ -6,7 +6,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { invokeTextModel } from "./aiProvider";
 import { generateImage } from "./_core/imageGeneration";
-import { createBrandProfile, getSubscription, getToneProfile, listBrandProfiles, listDraftHistories, saveDraftHistory, saveToneProfile, reserveDraftRegeneration, releaseDraftRegeneration, reserveMonthlyGeneration, releaseMonthlyGeneration, createPaymentRequest, listPaymentRequests, markPaymentPaid, reviewPaymentRequest, getMonthlyUsage } from "./db";
+import { createBrandProfile, getSubscription, getToneProfile, listBrandProfiles, listDraftHistories, saveDraftHistory, saveToneProfile, reserveDraftRegeneration, releaseDraftRegeneration, reserveMonthlyGeneration, releaseMonthlyGeneration, createPaymentRequest, listPaymentRequests, markPaymentSent, markPaymentPaid, reviewPaymentRequest, getMonthlyUsage } from "./db";
 
 const draftSchema = z.object({
   brand: z.object({ name: z.string(), industry: z.string().optional(), services: z.string().optional(), audience: z.string().optional(), strengths: z.string().optional(), tone: z.string().optional() }),
@@ -82,6 +82,7 @@ export const appRouter = router({
     current: protectedProcedure.query(({ ctx }) => getSubscription(ctx.user.id)),
     requestManual: protectedProcedure.input(z.object({ plan: z.string().min(1), amount: z.number().int().positive(), payerName: z.string().min(1), businessName: z.string().optional(), phone: z.string().optional(), billingCycle: z.enum(["monthly", "yearly"]).default("monthly"), note: z.string().optional() })).mutation(({ ctx, input }) => createPaymentRequest({ ...input, userId: ctx.user.id, status: "pending" })),
     adminList: protectedProcedure.query(({ ctx }) => { if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" }); return listPaymentRequests(); }),
+    adminMarkSent: protectedProcedure.input(z.object({ id: z.number() })).mutation(({ ctx, input }) => { if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" }); return markPaymentSent(input.id); }),
     adminMarkPaid: protectedProcedure.input(z.object({ id: z.number() })).mutation(({ ctx, input }) => { if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" }); return markPaymentPaid(input.id); }),
     adminReview: protectedProcedure.input(z.object({ id: z.number(), status: z.enum(["approved", "rejected"]), note: z.string().optional() })).mutation(({ ctx, input }) => { if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" }); return reviewPaymentRequest(input.id, ctx.user.id, input.status, input.note); }),
   }),

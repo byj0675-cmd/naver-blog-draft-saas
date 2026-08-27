@@ -1,4 +1,4 @@
-export type PaymentFilterStatus = "all" | "pending" | "paid" | "approved" | "rejected";
+export type PaymentFilterStatus = "all" | "pending" | "sent" | "paid" | "approved" | "rejected";
 
 type PaymentRow = { status: string; paymentStatus: string; payerName: string; businessName: string | null; phone: string | null; userName?: string };
 

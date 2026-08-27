@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/mysql2";
 import { BrandProfile, DraftHistory, InsertBrandProfile, InsertDraftHistory, InsertToneProfile, brandProfiles, draftHistories, toneProfiles, InsertUser, subscriptions, users, usageCounters, paymentRequests, InsertPaymentRequest } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { getSubscriptionEndDate } from "../shared/billingPeriod";
-import { canApproveSubscription } from "../shared/paymentWorkflow";
+import { canApproveSubscription, transitionCollectionStatus } from "../shared/paymentWorkflow";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -198,9 +198,23 @@ export async function listPaymentRequests() {
   return requests.map(request => ({ ...request, userName: names.get(request.userId) ?? "" }));
 }
 
+export async function markPaymentSent(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const currentRows = await db.select().from(paymentRequests).where(eq(paymentRequests.id, id)).limit(1);
+  const current = currentRows[0] ?? null;
+  if (!current || !transitionCollectionStatus(current.paymentStatus, "sent")) return current;
+  await db.update(paymentRequests).set({ paymentStatus: "sent" }).where(eq(paymentRequests.id, id));
+  const rows = await db.select().from(paymentRequests).where(eq(paymentRequests.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
 export async function markPaymentPaid(id: number) {
   const db = await getDb();
   if (!db) return null;
+  const currentRows = await db.select().from(paymentRequests).where(eq(paymentRequests.id, id)).limit(1);
+  const current = currentRows[0] ?? null;
+  if (!current || !transitionCollectionStatus(current.paymentStatus, "paid")) return current;
   await db.update(paymentRequests).set({ paymentStatus: "paid", paidAt: new Date() }).where(eq(paymentRequests.id, id));
   const rows = await db.select().from(paymentRequests).where(eq(paymentRequests.id, id)).limit(1);
   return rows[0] ?? null;
