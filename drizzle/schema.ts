@@ -63,10 +63,11 @@ export const draftHistories = mysqlTable("draftHistories", {
 export const usageCounters = mysqlTable("usageCounters", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
+  brandId: int("brandId").default(0).notNull(),
   periodKey: varchar("periodKey", { length: 7 }).notNull(),
   generationCount: int("generationCount").default(0).notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, (table) => ({ userPeriodUnique: uniqueIndex("userPeriodUnique").on(table.userId, table.periodKey) }));
+}, (table) => ({ userBrandPeriodUnique: uniqueIndex("userBrandPeriodUnique").on(table.userId, table.brandId, table.periodKey) }));
 
 export const paymentRequests = mysqlTable("paymentRequests", {
   id: int("id").autoincrement().primaryKey(),
@@ -87,6 +88,7 @@ export const subscriptions = mysqlTable("subscriptions", {
   plan: varchar("plan", { length: 40 }).notNull(),
   creditsTotal: int("creditsTotal").notNull(),
   creditsUsed: int("creditsUsed").default(0).notNull(),
+  brandSlots: int("brandSlots").default(1).notNull(),
   status: mysqlEnum("status", ["active", "pending", "failed"]).default("active").notNull(),
   paymentProvider: varchar("paymentProvider", { length: 40 }),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

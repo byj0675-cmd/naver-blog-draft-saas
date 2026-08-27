@@ -1,0 +1,1 @@
+ALTER TABLE `subscriptions` ADD `brandSlots` int DEFAULT 1 NOT NULL;

@@ -98,6 +98,10 @@ export async function listBrandProfiles(userId: number) {
 export async function createBrandProfile(input: InsertBrandProfile) {
   const db = await getDb();
   if (!db) return null;
+  const subscription = await getSubscription(input.userId);
+  const existingBrands = await db.select({ id: brandProfiles.id }).from(brandProfiles).where(eq(brandProfiles.userId, input.userId));
+  const brandSlots = subscription?.brandSlots ?? 1;
+  if (existingBrands.length >= brandSlots) throw new Error(`현재 플랜은 브랜드 ${brandSlots}개까지 등록할 수 있습니다.`);
   await db.insert(brandProfiles).values(input);
   const rows = await db.select().from(brandProfiles).where(eq(brandProfiles.userId, input.userId));
   return rows.at(-1) ?? null;
@@ -132,31 +136,31 @@ export async function listDraftHistories(userId: number) {
   return db.select().from(draftHistories).where(eq(draftHistories.userId, userId));
 }
 
-export async function reserveMonthlyGeneration(userId: number, limit = 12) {
+export async function reserveMonthlyGeneration(userId: number, brandId: number, limit = 12) {
   const db = await getDb();
   if (!db) return { allowed: true, used: 0, periodKey: currentPeriodKey() };
   const periodKey = currentPeriodKey();
-  await db.insert(usageCounters).values({ userId, periodKey, generationCount: 0 }).onDuplicateKeyUpdate({ set: { generationCount: sql`generationCount` } });
-  const result = await db.update(usageCounters).set({ generationCount: sql`generationCount + 1` }).where(and(eq(usageCounters.userId, userId), eq(usageCounters.periodKey, periodKey), lt(usageCounters.generationCount, limit)));
-  const rows = await db.select().from(usageCounters).where(and(eq(usageCounters.userId, userId), eq(usageCounters.periodKey, periodKey))).limit(1);
+  await db.insert(usageCounters).values({ userId, brandId, periodKey, generationCount: 0 }).onDuplicateKeyUpdate({ set: { generationCount: sql`generationCount` } });
+  const result = await db.update(usageCounters).set({ generationCount: sql`generationCount + 1` }).where(and(eq(usageCounters.userId, userId), eq(usageCounters.brandId, brandId), eq(usageCounters.periodKey, periodKey), lt(usageCounters.generationCount, limit)));
+  const rows = await db.select().from(usageCounters).where(and(eq(usageCounters.userId, userId), eq(usageCounters.brandId, brandId), eq(usageCounters.periodKey, periodKey))).limit(1);
   const used = rows[0]?.generationCount ?? 0;
   return { allowed: result[0]?.affectedRows === 1, used, periodKey };
 }
 
-export async function releaseMonthlyGeneration(userId: number, periodKey: string) {
+export async function releaseMonthlyGeneration(userId: number, brandId: number, periodKey: string) {
   const db = await getDb();
   if (!db) return;
-  await db.update(usageCounters).set({ generationCount: sql`GREATEST(generationCount - 1, 0)` }).where(and(eq(usageCounters.userId, userId), eq(usageCounters.periodKey, periodKey), gtZero()));
+  await db.update(usageCounters).set({ generationCount: sql`GREATEST(generationCount - 1, 0)` }).where(and(eq(usageCounters.userId, userId), eq(usageCounters.brandId, brandId), eq(usageCounters.periodKey, periodKey), gtZero()));
 }
 
 function gtZero() { return sql`generationCount > 0`; }
 export function currentPeriodKey() { return new Date().toISOString().slice(0, 7); }
 
-export async function getMonthlyUsage(userId: number, limit = 12) {
+export async function getMonthlyUsage(userId: number, brandId: number, limit = 12) {
   const db = await getDb();
   const periodKey = currentPeriodKey();
   if (!db) return { periodKey, used: 0, limit, remaining: limit };
-  const rows = await db.select({ used: usageCounters.generationCount }).from(usageCounters).where(and(eq(usageCounters.userId, userId), eq(usageCounters.periodKey, periodKey))).limit(1);
+  const rows = await db.select({ used: usageCounters.generationCount }).from(usageCounters).where(and(eq(usageCounters.userId, userId), eq(usageCounters.brandId, brandId), eq(usageCounters.periodKey, periodKey))).limit(1);
   const used = rows[0]?.used ?? 0;
   return { periodKey, used, limit, remaining: Math.max(0, limit - used) };
 }
@@ -196,12 +200,14 @@ export async function reviewPaymentRequest(id: number, adminId: number, status: 
   const rows = await db.select().from(paymentRequests).where(eq(paymentRequests.id, id)).limit(1);
   const request = rows[0] ?? null;
   if (request?.status === "approved") {
-    const creditsTotal = request.plan.toLowerCase() === "studio" ? 300 : request.plan.toLowerCase() === "starter" ? 30 : 100;
+    const planKey = request.plan.toLowerCase();
+    const creditsTotal = planKey === "studio" ? 300 : planKey === "starter" ? 30 : 100;
+    const brandSlots = planKey === "studio" ? 5 : planKey === "starter" ? 1 : 2;
     const existing = await db.select().from(subscriptions).where(eq(subscriptions.userId, request.userId)).limit(1);
     if (existing[0]) {
-      await db.update(subscriptions).set({ plan: request.plan, creditsTotal, creditsUsed: 0, status: "active", paymentProvider: "manual" }).where(eq(subscriptions.id, existing[0].id));
+      await db.update(subscriptions).set({ plan: request.plan, creditsTotal, creditsUsed: 0, brandSlots, status: "active", paymentProvider: "manual" }).where(eq(subscriptions.id, existing[0].id));
     } else {
-      await db.insert(subscriptions).values({ userId: request.userId, plan: request.plan, creditsTotal, creditsUsed: 0, status: "active", paymentProvider: "manual" });
+      await db.insert(subscriptions).values({ userId: request.userId, plan: request.plan, creditsTotal, creditsUsed: 0, brandSlots, status: "active", paymentProvider: "manual" });
     }
   }
   return request;

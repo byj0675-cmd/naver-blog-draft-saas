@@ -10,7 +10,7 @@ import { createBrandProfile, getSubscription, getToneProfile, listBrandProfiles,
 
 const draftSchema = z.object({
   brand: z.object({ name: z.string(), industry: z.string().optional(), services: z.string().optional(), audience: z.string().optional(), strengths: z.string().optional(), tone: z.string().optional() }),
-  primaryKeyword: z.string().min(1), secondaryKeywords: z.array(z.string()).default([]), purpose: z.string(), length: z.string().default("1,500자"),
+  brandId: z.number().int().positive().default(1), primaryKeyword: z.string().min(1), secondaryKeywords: z.array(z.string()).default([]), purpose: z.string(), length: z.string().default("1,500자"),
 });
 
 export const appRouter = router({
@@ -26,13 +26,13 @@ export const appRouter = router({
   }),
   content: router({
     generate: protectedProcedure.input(draftSchema.extend({ draftId: z.number().optional(), regenerate: z.boolean().default(false) })).mutation(async ({ ctx, input }) => {
-      const monthly = await reserveMonthlyGeneration(ctx.user.id, 12);
+      const monthly = await reserveMonthlyGeneration(ctx.user.id, input.brandId, 12);
       if (!monthly.allowed) throw new TRPCError({ code: "FORBIDDEN", message: "이번 달 생성 한도(12건)를 모두 사용했습니다." });
       let regenerationReserved = false;
       if (input.regenerate && input.draftId) {
         const regeneration = await reserveDraftRegeneration(ctx.user.id, input.draftId, 3);
         if (!regeneration.allowed) {
-          await releaseMonthlyGeneration(ctx.user.id, monthly.periodKey);
+          await releaseMonthlyGeneration(ctx.user.id, input.brandId, monthly.periodKey);
           throw new TRPCError({ code: "FORBIDDEN", message: "이 초안의 재생성 한도(3회)를 모두 사용했습니다." });
         }
         regenerationReserved = true;
@@ -49,7 +49,7 @@ export const appRouter = router({
       const draft = typeof content === "string" ? JSON.parse(content) : content;
       return { draft, creditsUsed: 1, monthlyUsed: monthly.used, regenerationsUsed: regenerationReserved ? 1 : 0, userId: ctx.user.id };
       } catch (error) {
-        await releaseMonthlyGeneration(ctx.user.id, monthly.periodKey);
+        await releaseMonthlyGeneration(ctx.user.id, input.brandId, monthly.periodKey);
         if (regenerationReserved && input.draftId) await releaseDraftRegeneration(ctx.user.id, input.draftId);
         throw error;
       }
@@ -74,7 +74,7 @@ export const appRouter = router({
     }),
   }),
   usage: router({
-    current: protectedProcedure.query(({ ctx }) => getMonthlyUsage(ctx.user.id, 12)),
+    current: protectedProcedure.input(z.object({ brandId: z.number().int().positive().default(1) }).optional()).query(({ ctx, input }) => getMonthlyUsage(ctx.user.id, input?.brandId ?? 1, 12)),
   }),
   billing: router({
     current: protectedProcedure.query(({ ctx }) => getSubscription(ctx.user.id)),
