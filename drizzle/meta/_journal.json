@@ -43,6 +43,20 @@
       "when": 1787792760183,
       "tag": "0005_sour_nekra",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1787793627124,
+      "tag": "0006_funny_imperial_guard",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1787794050593,
+      "tag": "0007_white_northstar",
+      "breakpoints": true
     }
   ]
 }

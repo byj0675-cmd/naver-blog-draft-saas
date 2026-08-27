@@ -2,6 +2,8 @@ import { and, desc, eq, lt, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { BrandProfile, DraftHistory, InsertBrandProfile, InsertDraftHistory, InsertToneProfile, brandProfiles, draftHistories, toneProfiles, InsertUser, subscriptions, users, usageCounters, paymentRequests, InsertPaymentRequest } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import { getSubscriptionEndDate } from "../shared/billingPeriod";
+import { canApproveSubscription } from "../shared/paymentWorkflow";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -193,9 +195,21 @@ export async function listPaymentRequests() {
   return db.select().from(paymentRequests).orderBy(desc(paymentRequests.requestedAt));
 }
 
+export async function markPaymentPaid(id: number) {
+  const db = await getDb();
+  if (!db) return null;
+  await db.update(paymentRequests).set({ paymentStatus: "paid", paidAt: new Date() }).where(eq(paymentRequests.id, id));
+  const rows = await db.select().from(paymentRequests).where(eq(paymentRequests.id, id)).limit(1);
+  return rows[0] ?? null;
+}
+
 export async function reviewPaymentRequest(id: number, adminId: number, status: "approved" | "rejected", note?: string) {
   const db = await getDb();
   if (!db) return null;
+  const currentRows = await db.select().from(paymentRequests).where(eq(paymentRequests.id, id)).limit(1);
+  const current = currentRows[0] ?? null;
+  if (!current) return null;
+  if (status === "approved" && !canApproveSubscription(current.paymentStatus)) throw new Error("수납 확인 후 승인할 수 있습니다.");
   await db.update(paymentRequests).set({ status, note: note ?? null, reviewedBy: adminId, reviewedAt: new Date() }).where(eq(paymentRequests.id, id));
   const rows = await db.select().from(paymentRequests).where(eq(paymentRequests.id, id)).limit(1);
   const request = rows[0] ?? null;
@@ -203,12 +217,11 @@ export async function reviewPaymentRequest(id: number, adminId: number, status: 
     const planKey = request.plan.toLowerCase();
     const creditsTotal = planKey === "studio" ? 300 : planKey === "starter" ? 30 : 100;
     const brandSlots = planKey === "studio" ? 5 : planKey === "starter" ? 1 : 2;
+    const billingCycle = request.billingCycle ?? "monthly";
+    const validUntil = getSubscriptionEndDate(new Date(), billingCycle);
     const existing = await db.select().from(subscriptions).where(eq(subscriptions.userId, request.userId)).limit(1);
-    if (existing[0]) {
-      await db.update(subscriptions).set({ plan: request.plan, creditsTotal, creditsUsed: 0, brandSlots, status: "active", paymentProvider: "manual" }).where(eq(subscriptions.id, existing[0].id));
-    } else {
-      await db.insert(subscriptions).values({ userId: request.userId, plan: request.plan, creditsTotal, creditsUsed: 0, brandSlots, status: "active", paymentProvider: "manual" });
-    }
+    if (existing[0]) await db.update(subscriptions).set({ plan: request.plan, creditsTotal, creditsUsed: 0, brandSlots, billingCycle, validUntil, status: "active", paymentProvider: "manual" }).where(eq(subscriptions.id, existing[0].id));
+    else await db.insert(subscriptions).values({ userId: request.userId, plan: request.plan, creditsTotal, creditsUsed: 0, brandSlots, billingCycle, validUntil, status: "active", paymentProvider: "manual" });
   }
   return request;
 }
@@ -217,5 +230,7 @@ export async function getSubscription(userId: number) {
   const db = await getDb();
   if (!db) return null;
   const rows = await db.select().from(subscriptions).where(eq(subscriptions.userId, userId)).limit(1);
-  return rows[0] ?? null;
+  const subscription = rows[0] ?? null;
+  if (!subscription) return null;
+  return { ...subscription, isExpired: Boolean(subscription.validUntil && subscription.validUntil.getTime() < Date.now()) };
 }
