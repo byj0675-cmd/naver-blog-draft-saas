@@ -7,9 +7,12 @@ import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { invokeTextModel, parseModelJson } from "./aiProvider";
 import { generateImage } from "./_core/imageGeneration";
 import { createBrandProfile, getSubscription, getToneProfile, listBrandProfiles, listDraftHistories, saveDraftHistory, saveToneProfile, reserveDraftRegeneration, releaseDraftRegeneration, reserveMonthlyGeneration, releaseMonthlyGeneration, createPaymentRequest, listPaymentRequests, markPaymentSent, markPaymentPaid, reviewPaymentRequest, getMonthlyUsage } from "./db";
+const brandBriefSchema = z.object({
+  location: z.string().optional(), address: z.string().optional(), phone: z.string().optional(), website: z.string().optional(), businessHours: z.string().optional(), priceInfo: z.string().optional(), uniquePoints: z.string().optional(), brandStory: z.string().optional(), primaryKeywords: z.string().optional(), secondaryKeywords: z.string().optional(), customerQuestions: z.string().optional(), factsToUse: z.string().optional(), forbiddenClaims: z.string().optional(), toneNotes: z.string().optional(), callToAction: z.string().optional(),
+});
 
 const draftSchema = z.object({
-  brand: z.object({ name: z.string(), industry: z.string().optional(), services: z.string().optional(), audience: z.string().optional(), strengths: z.string().optional(), tone: z.string().optional() }),
+  brand: z.object({ name: z.string(), industry: z.string().optional(), services: z.string().optional(), audience: z.string().optional(), strengths: z.string().optional(), tone: z.string().optional(), brief: brandBriefSchema.optional() }),
   brandId: z.number().int().positive().default(1), primaryKeyword: z.string().min(1), secondaryKeywords: z.array(z.string()).default([]), purpose: z.string(), length: z.string().default("1,500자"),
 });
 
@@ -21,7 +24,7 @@ export const appRouter = router({
   }),
   brands: router({
     list: protectedProcedure.query(({ ctx }) => listBrandProfiles(ctx.user.id)),
-    create: protectedProcedure.input(z.object({ name: z.string().min(1), industry: z.string().optional(), services: z.string().optional(), audience: z.string().optional(), strengths: z.string().optional() })).mutation(({ ctx, input }) => createBrandProfile({ ...input, userId: ctx.user.id })),
+    create: protectedProcedure.input(z.object({ name: z.string().min(1), industry: z.string().optional(), services: z.string().optional(), audience: z.string().optional(), strengths: z.string().optional(), brief: brandBriefSchema.optional() })).mutation(({ ctx, input }) => createBrandProfile({ name: input.name, industry: input.industry, services: input.services, audience: input.audience, strengths: input.strengths, briefJson: JSON.stringify(input.brief ?? {}), userId: ctx.user.id })),
     tone: protectedProcedure.input(z.object({ brandId: z.number() })).query(({ input }) => getToneProfile(input.brandId)),
   }),
   content: router({
@@ -43,7 +46,9 @@ export const appRouter = router({
       const response = await invokeTextModel({
         messages: [
           { role: "system", content: "당신은 네이버 블로그 편집자입니다. 검색엔진만을 위한 키워드 나열을 피하고 독자에게 유용한 한국어 콘텐츠를 작성합니다. 반드시 JSON 형식으로 title, intro, body, ending, hashtags를 반환합니다." },
-          { role: "user", content: `브랜드: ${JSON.stringify(input.brand)}\n핵심 키워드: ${input.primaryKeyword}\n보조 키워드: ${input.secondaryKeywords.join(", ")}\n목적: ${input.purpose}\n분량: ${input.length}\n톤: ${input.brand.tone ?? "차분하고 진정성 있는 존댓말"}` },
+          { role: "user", content: `브랜드: ${JSON.stringify(input.brand)}\n핵심 키워드: ${input.primaryKeyword}\n보조 키워드: ${input.secondaryKeywords.join(", ")}\n목적: ${input.purpose}\n분량: ${input.length}\n
+상세 업체 브리프: ${JSON.stringify(input.brand.brief ?? {})}
+톤: ${input.brand.tone ?? "차분하고 진정성 있는 존댓말"}` },
         ],
         response_format: { type: "json_schema", json_schema: { name: "naver_blog_draft", strict: true, schema: { type: "object", properties: { title: { type: "string" }, intro: { type: "string" }, body: { type: "string" }, ending: { type: "string" }, hashtags: { type: "string" } }, required: ["title", "intro", "body", "ending", "hashtags"], additionalProperties: false } } },
       });

@@ -33,6 +33,8 @@ export const brandProfiles = mysqlTable("brandProfiles", {
   services: text("services"),
   audience: text("audience"),
   strengths: text("strengths"),
+  /** Structured business brief used to keep generated drafts factually grounded. */
+  briefJson: text("briefJson"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
