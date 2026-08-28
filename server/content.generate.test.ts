@@ -45,6 +45,16 @@ describe("content.generate JSON response handling", () => {
     await expect(caller.content.generate({ brandId: 1, brand: { name: "테스트 브랜드" }, primaryKeyword: "테스트", secondaryKeywords: [], purpose: "정보 제공", length: "1,500자", regenerate: false })).resolves.toMatchObject({ draft: { title: "테스트 제목 1", titleCandidates: ["테스트 제목 1", "테스트 제목 2", "테스트 제목 3"] } });
   });
 
+  it("uses the latest owner-scoped brand brief when generating", async () => {
+    getBrandProfile.mockResolvedValue({ id: 1, userId: 1, name: "최신 업체", industry: "필라테스", services: "개인레슨", audience: "직장인", strengths: "초보자 상담", briefJson: JSON.stringify({ expertise: "체형 교정 전문", verifiedFacts: ["강사 자격 보유"] }) });
+    reserveMonthlyGeneration.mockResolvedValue({ allowed: true, used: 1, periodKey: "2026-08" });
+    invokeTextModel.mockResolvedValue({ choices: [{ message: { content: JSON.stringify({ titleCandidates: ["제목1", "제목2", "제목3"], title: "제목1", intro: "도입", body: "본문", ending: "마무리", hashtags: "#태그" }) } }] });
+    const { appRouter } = await import("./routers");
+    const caller = appRouter.createCaller(context());
+    await caller.content.generate({ brandId: 1, brand: { name: "오래된 입력" }, primaryKeyword: "필라테스", secondaryKeywords: [], purpose: "정보 제공", length: "1,500자", regenerate: false });
+    expect(invokeTextModel).toHaveBeenLastCalledWith(expect.objectContaining({ messages: expect.arrayContaining([expect.objectContaining({ content: expect.stringContaining("체형 교정 전문") })]) }));
+  });
+
   it("releases the reserved usage and returns a clear error for an empty model response", async () => {
     reserveMonthlyGeneration.mockResolvedValue({ allowed: true, used: 1, periodKey: "2026-08" });
     invokeTextModel.mockResolvedValue({ choices: [{ message: { content: "" } }] });

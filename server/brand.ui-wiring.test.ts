@@ -11,6 +11,8 @@ describe("brand registration UI wiring", () => {
     expect(source).toContain("onClick={onAddBrand}");
     expect(source).toContain("await utils.brands.list.invalidate()");
     expect(source).toContain("trpc.brands.list.useQuery");
+    expect(source).toContain("trpc.content.save.useMutation");
+    expect(source).toContain("초안 이력에 저장했어요");
     expect(source).toContain("brandNames = brandList.data?.length");
     expect(source).toContain('"고객 질문"');
     expect(source).toContain('"첫 글 확인"');
