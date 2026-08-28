@@ -12,5 +12,9 @@ describe("brand registration UI wiring", () => {
     expect(source).toContain("await utils.brands.list.invalidate()");
     expect(source).toContain("trpc.brands.list.useQuery");
     expect(source).toContain("brandNames = brandList.data?.length");
+    expect(source).toContain('"고객 질문"');
+    expect(source).toContain('"첫 글"');
+    expect(source).toContain('localStorage.setItem("blogmate.onboarding.draft"');
+    expect(source).toContain("자동 저장됨");
   });
 });
