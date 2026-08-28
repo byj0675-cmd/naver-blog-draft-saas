@@ -39,10 +39,10 @@ function context(): TrpcContext {
 describe("content.generate JSON response handling", () => {
   it("returns a parsed draft through the real tRPC procedure", async () => {
     reserveMonthlyGeneration.mockResolvedValue({ allowed: true, used: 1, periodKey: "2026-08" });
-    invokeTextModel.mockResolvedValue({ choices: [{ message: { content: JSON.stringify({ title: "테스트 제목", intro: "도입", body: "본문", ending: "마무리", hashtags: "#테스트" }) } }] });
+    invokeTextModel.mockResolvedValue({ choices: [{ message: { content: JSON.stringify({ titleCandidates: ["테스트 제목 1", "테스트 제목 2", "테스트 제목 3"], title: "테스트 제목 1", intro: "도입", body: "본문", ending: "마무리", hashtags: "#테스트" }) } }] });
     const { appRouter } = await import("./routers");
     const caller = appRouter.createCaller(context());
-    await expect(caller.content.generate({ brandId: 1, brand: { name: "테스트 브랜드" }, primaryKeyword: "테스트", secondaryKeywords: [], purpose: "정보 제공", length: "1,500자", regenerate: false })).resolves.toMatchObject({ draft: { title: "테스트 제목" } });
+    await expect(caller.content.generate({ brandId: 1, brand: { name: "테스트 브랜드" }, primaryKeyword: "테스트", secondaryKeywords: [], purpose: "정보 제공", length: "1,500자", regenerate: false })).resolves.toMatchObject({ draft: { title: "테스트 제목 1", titleCandidates: ["테스트 제목 1", "테스트 제목 2", "테스트 제목 3"] } });
   });
 
   it("releases the reserved usage and returns a clear error for an empty model response", async () => {

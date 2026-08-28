@@ -51,13 +51,13 @@ export const appRouter = router({
       try {
       const response = await invokeTextModel({
         messages: [
-          { role: "system", content: "당신은 네이버 블로그 편집자입니다. 검색엔진만을 위한 키워드 나열을 피하고 독자에게 유용한 한국어 콘텐츠를 작성합니다. 반드시 JSON 형식으로 title, intro, body, ending, hashtags를 반환합니다." },
+          { role: "system", content: "당신은 네이버 블로그 편집자입니다. 검색엔진만을 위한 키워드 나열을 피하고 독자에게 유용한 한국어 콘텐츠를 작성합니다. 반드시 JSON 형식으로 titleCandidates(제목 3개 배열), title, intro, body, ending, hashtags를 반환합니다." },
           { role: "user", content: `브랜드: ${JSON.stringify(brand)}\n핵심 키워드: ${input.primaryKeyword}\n보조 키워드: ${input.secondaryKeywords.join(", ")}\n목적: ${input.purpose}\n분량: ${input.length}\n상세 업체 브리프: ${JSON.stringify(brand.brief ?? {})}\n톤: ${input.brand.tone ?? "차분하고 진정성 있는 존댓말"}` },
         ],
-        response_format: { type: "json_schema", json_schema: { name: "naver_blog_draft", strict: true, schema: { type: "object", properties: { title: { type: "string" }, intro: { type: "string" }, body: { type: "string" }, ending: { type: "string" }, hashtags: { type: "string" } }, required: ["title", "intro", "body", "ending", "hashtags"], additionalProperties: false } } },
+        response_format: { type: "json_schema", json_schema: { name: "naver_blog_draft", strict: true, schema: { type: "object", properties: { titleCandidates: { type: "array", items: { type: "string" }, minItems: 3, maxItems: 3 }, title: { type: "string" }, intro: { type: "string" }, body: { type: "string" }, ending: { type: "string" }, hashtags: { type: "string" } }, required: ["titleCandidates", "title", "intro", "body", "ending", "hashtags"], additionalProperties: false } } },
       });
       const content = response.choices?.[0]?.message?.content;
-      const draft = parseModelJson<{ title: string; intro: string; body: string; ending: string; hashtags: string }>(content);
+      const draft = parseModelJson<{ titleCandidates: string[]; title: string; intro: string; body: string; ending: string; hashtags: string }>(content);
       return { draft, creditsUsed: 1, monthlyUsed: monthly.used, regenerationsUsed: regenerationReserved ? 1 : 0, userId: ctx.user.id };
       } catch (error) {
         await releaseMonthlyGeneration(ctx.user.id, input.brandId, monthly.periodKey);
