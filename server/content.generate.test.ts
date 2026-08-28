@@ -6,6 +6,8 @@ const reserveMonthlyGeneration = vi.fn();
 const releaseMonthlyGeneration = vi.fn();
 const reserveDraftRegeneration = vi.fn();
 const releaseDraftRegeneration = vi.fn();
+const getBrandProfile = vi.fn().mockResolvedValue(null);
+const updateBrandProfile = vi.fn();
 
 vi.mock("./aiProvider", () => ({
   invokeTextModel,
@@ -17,6 +19,8 @@ vi.mock("./aiProvider", () => ({
 
 vi.mock("./db", () => ({
   getSubscription: vi.fn().mockResolvedValue({ isExpired: false }),
+  getBrandProfile,
+  updateBrandProfile,
   reserveMonthlyGeneration,
   releaseMonthlyGeneration,
   reserveDraftRegeneration,

@@ -97,6 +97,20 @@ export async function listBrandProfiles(userId: number) {
   return db.select().from(brandProfiles).where(eq(brandProfiles.userId, userId));
 }
 
+export async function getBrandProfile(userId: number, brandId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(brandProfiles).where(and(eq(brandProfiles.id, brandId), eq(brandProfiles.userId, userId))).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function updateBrandProfile(userId: number, brandId: number, input: Partial<Pick<InsertBrandProfile, "name" | "industry" | "services" | "audience" | "strengths" | "briefJson">>) {
+  const db = await getDb();
+  if (!db) return null;
+  await db.update(brandProfiles).set(input).where(and(eq(brandProfiles.id, brandId), eq(brandProfiles.userId, userId)));
+  return getBrandProfile(userId, brandId);
+}
+
 export async function createBrandProfile(input: InsertBrandProfile) {
   const db = await getDb();
   if (!db) return null;

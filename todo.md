@@ -317,3 +317,14 @@
 - [x] 기존 `brands.create` mutation과 온보딩 최종 제출 연결
 - [x] 모바일·데스크톱 접근성 및 반응형 상호작용 검증
 - [x] 온보딩 구현 후 타입 검사·테스트·프로덕션 빌드·체크포인트 저장
+
+## 하이브리드 브리프·브랜드 API 확정 범위
+
+- [x] `briefJson`에 `services`, `expertise`, `faqs`, `verifiedFacts`, `sourceLinks` 하이브리드 구조 추가
+- [x] 기존 문자열형 briefJson을 새 구조로 읽을 수 있는 하위 호환 파서 유지
+- [x] 현재 온보딩을 6단계 화면으로 정리하고 단계별 역할을 명확히 분리
+- [x] `brands.get` 단건 조회 API 추가
+- [x] `brands.update` 부분 수정 API 추가
+- [x] `content.generate`가 `brandId`로 최신 브랜드·브리프·톤 데이터를 서버 조회
+- [ ] 제목 3개 추천과 첫 글 생성 결과를 온보딩 완료 흐름에 연결할 계약 준비
+- [ ] URL 분석·선택적 웹 리서치·출처 표시의 후속 데이터 계약 준비

@@ -5,10 +5,12 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { invokeTextModel, parseModelJson } from "./aiProvider";
+import { parseBrandBrief, serializeBrandBrief } from "@shared/brandBrief";
 import { generateImage } from "./_core/imageGeneration";
-import { createBrandProfile, getSubscription, getToneProfile, listBrandProfiles, listDraftHistories, saveDraftHistory, saveToneProfile, reserveDraftRegeneration, releaseDraftRegeneration, reserveMonthlyGeneration, releaseMonthlyGeneration, createPaymentRequest, listPaymentRequests, markPaymentSent, markPaymentPaid, reviewPaymentRequest, getMonthlyUsage } from "./db";
+import { createBrandProfile, getBrandProfile, updateBrandProfile, getSubscription, getToneProfile, listBrandProfiles, listDraftHistories, saveDraftHistory, saveToneProfile, reserveDraftRegeneration, releaseDraftRegeneration, reserveMonthlyGeneration, releaseMonthlyGeneration, createPaymentRequest, listPaymentRequests, markPaymentSent, markPaymentPaid, reviewPaymentRequest, getMonthlyUsage } from "./db";
 const brandBriefSchema = z.object({
   location: z.string().optional(), address: z.string().optional(), phone: z.string().optional(), website: z.string().optional(), businessHours: z.string().optional(), priceInfo: z.string().optional(), uniquePoints: z.string().optional(), brandStory: z.string().optional(), primaryKeywords: z.string().optional(), secondaryKeywords: z.string().optional(), customerQuestions: z.string().optional(), factsToUse: z.string().optional(), forbiddenClaims: z.string().optional(), toneNotes: z.string().optional(), callToAction: z.string().optional(),
+  services: z.array(z.object({ name: z.string(), description: z.string().optional(), price: z.string().optional(), duration: z.string().optional(), audience: z.string().optional(), notes: z.string().optional() })).optional(), expertise: z.string().optional(), faqs: z.array(z.object({ question: z.string(), answer: z.string() })).optional(), verifiedFacts: z.array(z.string()).optional(), sourceLinks: z.array(z.string().url()).optional(),
 });
 
 const draftSchema = z.object({
@@ -24,13 +26,17 @@ export const appRouter = router({
   }),
   brands: router({
     list: protectedProcedure.query(({ ctx }) => listBrandProfiles(ctx.user.id)),
-    create: protectedProcedure.input(z.object({ name: z.string().min(1), industry: z.string().optional(), services: z.string().optional(), audience: z.string().optional(), strengths: z.string().optional(), brief: brandBriefSchema.optional() })).mutation(({ ctx, input }) => createBrandProfile({ name: input.name, industry: input.industry, services: input.services, audience: input.audience, strengths: input.strengths, briefJson: JSON.stringify(input.brief ?? {}), userId: ctx.user.id })),
+    get: protectedProcedure.input(z.object({ brandId: z.number().int().positive() })).query(({ ctx, input }) => getBrandProfile(ctx.user.id, input.brandId)),
+    create: protectedProcedure.input(z.object({ name: z.string().min(1), industry: z.string().optional(), services: z.string().optional(), audience: z.string().optional(), strengths: z.string().optional(), brief: brandBriefSchema.optional() })).mutation(({ ctx, input }) => createBrandProfile({ name: input.name, industry: input.industry, services: input.services, audience: input.audience, strengths: input.strengths, briefJson: serializeBrandBrief(input.brief ?? {}) , userId: ctx.user.id })),
+    update: protectedProcedure.input(z.object({ brandId: z.number().int().positive(), name: z.string().min(1).optional(), industry: z.string().optional(), services: z.string().optional(), audience: z.string().optional(), strengths: z.string().optional(), brief: brandBriefSchema.optional() })).mutation(({ ctx, input }) => updateBrandProfile(ctx.user.id, input.brandId, { name: input.name, industry: input.industry, services: input.services, audience: input.audience, strengths: input.strengths, ...(input.brief ? { briefJson: serializeBrandBrief(input.brief) } : {}) })),
     tone: protectedProcedure.input(z.object({ brandId: z.number() })).query(({ input }) => getToneProfile(input.brandId)),
   }),
   content: router({
     generate: protectedProcedure.input(draftSchema.extend({ draftId: z.number().optional(), regenerate: z.boolean().default(false) })).mutation(async ({ ctx, input }) => {
       const subscription = await getSubscription(ctx.user.id);
       if (subscription?.isExpired) throw new TRPCError({ code: "FORBIDDEN", message: "구독 기간이 만료되었습니다. 결제 후 다시 이용해 주세요." });
+      const storedBrand = await getBrandProfile(ctx.user.id, input.brandId);
+      const brand = storedBrand ? { name: storedBrand.name, industry: storedBrand.industry ?? undefined, services: storedBrand.services ?? undefined, audience: storedBrand.audience ?? undefined, strengths: storedBrand.strengths ?? undefined, brief: parseBrandBrief(storedBrand.briefJson) } : input.brand;
       const monthly = await reserveMonthlyGeneration(ctx.user.id, input.brandId, 12);
       if (!monthly.allowed) throw new TRPCError({ code: "FORBIDDEN", message: "이번 달 생성 한도(12건)를 모두 사용했습니다." });
       let regenerationReserved = false;
@@ -46,9 +52,7 @@ export const appRouter = router({
       const response = await invokeTextModel({
         messages: [
           { role: "system", content: "당신은 네이버 블로그 편집자입니다. 검색엔진만을 위한 키워드 나열을 피하고 독자에게 유용한 한국어 콘텐츠를 작성합니다. 반드시 JSON 형식으로 title, intro, body, ending, hashtags를 반환합니다." },
-          { role: "user", content: `브랜드: ${JSON.stringify(input.brand)}\n핵심 키워드: ${input.primaryKeyword}\n보조 키워드: ${input.secondaryKeywords.join(", ")}\n목적: ${input.purpose}\n분량: ${input.length}\n
-상세 업체 브리프: ${JSON.stringify(input.brand.brief ?? {})}
-톤: ${input.brand.tone ?? "차분하고 진정성 있는 존댓말"}` },
+          { role: "user", content: `브랜드: ${JSON.stringify(brand)}\n핵심 키워드: ${input.primaryKeyword}\n보조 키워드: ${input.secondaryKeywords.join(", ")}\n목적: ${input.purpose}\n분량: ${input.length}\n상세 업체 브리프: ${JSON.stringify(brand.brief ?? {})}\n톤: ${input.brand.tone ?? "차분하고 진정성 있는 존댓말"}` },
         ],
         response_format: { type: "json_schema", json_schema: { name: "naver_blog_draft", strict: true, schema: { type: "object", properties: { title: { type: "string" }, intro: { type: "string" }, body: { type: "string" }, ending: { type: "string" }, hashtags: { type: "string" } }, required: ["title", "intro", "body", "ending", "hashtags"], additionalProperties: false } } },
       });

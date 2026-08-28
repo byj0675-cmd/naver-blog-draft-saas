@@ -1,0 +1,12 @@
+import fs from "node:fs";
+const path = "/home/ubuntu/naver-blog-draft-saas/client/src/pages/Home.tsx";
+let source = fs.readFileSync(path, "utf8");
+source = source.replace('const steps = ["기본 정보", "서비스", "전문성", "고객 질문", "글쓰기 기준", "첫 글", "확인"];', 'const steps = ["기본 정보", "서비스", "전문성", "고객 질문", "글쓰기 기준", "첫 글 확인"];');
+source = source.replace('Math.min(6, prev + 1)', 'Math.min(5, prev + 1)');
+source = source.replace('step < 6 ?', 'step < 5 ?');
+source = source.replace('저장 후 첫 글을 바로 준비해볼까요?', '첫 글 주제와 입력 내용을 확인해 주세요.');
+source = source.replace('업체 정보가 저장되면 주제와 키워드만 선택해 초안을 만들 수 있습니다.', '저장 후 새 초안 화면에서 주제와 키워드만 선택해 초안을 만들 수 있습니다.');
+const oldReview = /\n    \{step === 6 && <section[\s\S]*?<\/section>\}/;
+source = source.replace(oldReview, '');
+fs.writeFileSync(path, source);
+console.log("normalized onboarding to six steps");
