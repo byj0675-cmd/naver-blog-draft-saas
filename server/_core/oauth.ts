@@ -71,8 +71,9 @@ export function registerOAuthRoutes(app: Express) {
       res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
       res.redirect(302, "/");
     } catch (error) {
-      console.error("[Kakao OAuth] Callback failed", error);
-      res.status(502).json({ error: "Kakao login failed" });
+      const errMsg = error instanceof Error ? error.message : String(error);
+      console.error("[Kakao OAuth] Callback failed:", errMsg, error);
+      res.status(502).json({ error: "Kakao login failed", detail: errMsg });
     }
   });
 
