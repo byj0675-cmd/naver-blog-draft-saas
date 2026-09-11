@@ -146,10 +146,30 @@ export async function getToneProfile(brandId: number) {
   return rows[0] ?? null;
 }
 
-export async function listDraftHistories(userId: number) {
+export async function listDraftHistories(userId: number, brandId?: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(draftHistories).where(eq(draftHistories.userId, userId));
+  const conditions = [eq(draftHistories.userId, userId)];
+  if (brandId) {
+    conditions.push(eq(draftHistories.brandId, brandId));
+  }
+  return db.select().from(draftHistories).where(and(...conditions)).orderBy(desc(draftHistories.createdAt));
+}
+
+export async function getDraftHistory(userId: number, draftId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select().from(draftHistories).where(and(eq(draftHistories.id, draftId), eq(draftHistories.userId, userId))).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function updateDraftHistory(userId: number, draftId: number, data: Partial<InsertDraftHistory>) {
+  const db = await getDb();
+  if (!db) return null;
+  const existing = await getDraftHistory(userId, draftId);
+  if (!existing) return null;
+  await db.update(draftHistories).set(data).where(and(eq(draftHistories.id, draftId), eq(draftHistories.userId, userId)));
+  return getDraftHistory(userId, draftId);
 }
 
 export async function reserveMonthlyGeneration(userId: number, brandId: number, limit = 12) {

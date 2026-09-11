@@ -11,10 +11,12 @@ import VisualStudio from "@/components/VisualStudio";
 import { toast } from "sonner";
 import { BarChart3, Bell, BookOpen, Check, ChevronDown, Clipboard, CreditCard, FileText, HelpCircle, LayoutDashboard, Lightbulb, LockKeyhole, Menu, MoreHorizontal, PenLine, Plus, Search, Settings2, ImageIcon, Sparkles, Smartphone, Target, Users, X, Zap } from "lucide-react";
 
-type Section = "overview" | "generate" | "brands" | "toolkit" | "visual" | "seo" | "billing" | "admin";
+type Section = "overview" | "guide" | "generate" | "history" | "brands" | "toolkit" | "visual" | "seo" | "billing" | "admin";
 const nav = [
   { id: "overview", label: "한눈에 보기", icon: LayoutDashboard },
+  { id: "guide", label: "이용 가이드", icon: HelpCircle },
   { id: "generate", label: "새 초안 만들기", icon: PenLine },
+  { id: "history", label: "생성 이력", icon: FileText },
   { id: "brands", label: "브랜드 & 톤", icon: BookOpen },
   { id: "toolkit", label: "콘텐츠 도구함", icon: Smartphone },
   { id: "visual", label: "이미지·SEO 도구", icon: ImageIcon },
@@ -49,10 +51,35 @@ function Topbar({ section, setOpen, onAddBrand }: { section: Section; setOpen: (
 
 function Overview({ setSection }: { setSection: (s: Section) => void }) {
   const usage = trpc.usage.current.useQuery(undefined, { retry: false });
+  const historyQuery = trpc.content.history.useQuery(undefined, { retry: false });
   const used = usage.data?.used ?? 0;
   const remaining = usage.data?.remaining ?? 12;
   const usagePercent = Math.min(100, Math.round((used / 12) * 100));
-  return <div className="space-y-8"><div className="rise"><p className="mb-2 text-xs font-bold text-[#e86550]">오늘의 작업</p><h2 className="font-display text-[34px] leading-tight tracking-[-.04em] text-[#18202b]">우리 매장다운 글을<br/><em className="text-[#e86550]">꾸준히 쌓아보세요.</em></h2><p className="mt-3 max-w-md text-sm leading-6 text-[#7b838b]">브랜드의 결을 지키면서, 검색하는 고객에게 닿는 글을 만드세요.</p></div><div className="rounded-xl border border-[#e7e4de] bg-white p-5 rise rise-1"><div className="flex items-center justify-between"><div><p className="text-[10px] font-extrabold uppercase tracking-[.15em] text-[#e86550]">오늘 우선 처리</p><h3 className="mt-1 text-sm font-extrabold">지금 이어서 할 일</h3></div><span className="rounded-full bg-[#fbfaf8] px-2.5 py-1 text-[10px] font-bold text-[#858d94]">3개 항목</span></div><div className="mt-4 grid gap-2 md:grid-cols-3"><button onClick={() => setSection("generate")} className="group flex items-center gap-3 rounded-lg border border-[#eeeae5] bg-[#fffdfa] p-3 text-left transition hover:border-[#e86550] hover:bg-[#fff8f6]"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-[#fff0ec] text-[10px] font-extrabold text-[#c8513e]">01</span><span className="min-w-0 flex-1"><span className="block text-[11px] font-bold text-[#18202b]">검토 중인 초안</span><span className="mt-1 block text-[10px] leading-4 text-[#92999e]">제목과 본문을 확인해 발행하세요.</span></span><span className="text-sm text-[#e86550]">→</span></button><button onClick={() => setSection("brands")} className="group flex items-center gap-3 rounded-lg border border-[#eeeae5] bg-[#fffdfa] p-3 text-left transition hover:border-[#e86550] hover:bg-[#fff8f6]"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-[#f1eee7] text-[10px] font-extrabold text-[#6f777d]">02</span><span className="min-w-0 flex-1"><span className="block text-[11px] font-bold text-[#18202b]">브랜드 자료 추가</span><span className="mt-1 block text-[10px] leading-4 text-[#92999e]">새 글을 더해 표현 기준을 다듬으세요.</span></span><span className="text-sm text-[#e86550]">→</span></button><button onClick={() => setSection("billing")} className="group flex items-center gap-3 rounded-lg border border-[#eeeae5] bg-[#fffdfa] p-3 text-left transition hover:border-[#e86550] hover:bg-[#fff8f6]"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-[#eef3f7] text-[10px] font-extrabold text-[#5f7485]">03</span><span className="min-w-0 flex-1"><span className="block text-[11px] font-bold text-[#18202b]">구독 상태 확인</span><span className="mt-1 block text-[10px] leading-4 text-[#92999e]">남은 생성량과 이용 종료일을 확인하세요.</span></span><span className="text-sm text-[#e86550]">→</span></button></div></div><div className="grid gap-4 sm:grid-cols-3 rise rise-2"><div className="rounded-xl border border-[#e7e4de] bg-white p-5"><div className="mb-5 flex items-center justify-between"><span className="text-xs font-bold text-[#8b9298]">이번 달 잔여 생성</span><FileText size={17} className="text-[#e86550]"/></div><p className="text-[28px] font-extrabold tracking-tight">{remaining} <span className="text-sm font-medium text-[#a5aaad]">건 남음</span></p><div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#efeee9]"><div className="h-full rounded-full bg-[#e86550] transition-all" style={{ width: `${usagePercent}%` }}/></div><p className="mt-2 text-[11px] font-semibold text-[#33805e]">{used}/12건 사용 <span className="text-[#a1a6a9]">이번 달</span></p></div><div className="rounded-xl border border-[#e7e4de] bg-white p-5"><div className="mb-5 flex items-center justify-between"><span className="text-xs font-bold text-[#8b9298]">평균 SEO 점수</span><Target size={17} className="text-[#e86550]"/></div><p className="text-[28px] font-extrabold tracking-tight">91<span className="text-sm font-medium text-[#a5aaad]">/100</span></p><p className="mt-2 text-[11px] font-semibold text-[#33805e]">↑ 6점 <span className="text-[#a1a6a9]">지난달 대비</span></p></div><div className="rounded-xl border border-[#e7e4de] bg-white p-5"><div className="mb-5 flex items-center justify-between"><span className="text-xs font-bold text-[#8b9298]">활성 브랜드</span><BookOpen size={17} className="text-[#e86550]"/></div><p className="text-[28px] font-extrabold tracking-tight">3 <span className="text-sm font-medium text-[#a5aaad]">개</span></p><p className="mt-2 text-[11px] font-semibold text-[#a1a6a9]">총 5개까지 관리 가능</p></div></div><div className="grid gap-5 lg:grid-cols-[1.35fr_1fr] rise rise-3"><div className="rounded-xl border border-[#e7e4de] bg-white"><div className="flex items-center justify-between border-b border-[#eeeae5] px-5 py-4"><div><h3 className="text-sm font-extrabold">최근 생성한 초안</h3><p className="mt-1 text-[11px] text-[#959ba0]">브랜드의 다음 발행을 준비하세요.</p></div><button onClick={() => setSection("generate")} className="text-[11px] font-bold text-[#e86550]">전체 보기 →</button></div><div className="divide-y divide-[#f0ede9]">{drafts.map(d => <div key={d.title} className="flex items-center gap-3 px-5 py-4"><div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#fff1ed] text-[#e86550]"><FileText size={15}/></div><div className="min-w-0 flex-1"><p className="truncate text-[12px] font-bold">{d.title}</p><p className="mt-1 text-[10px] text-[#989da1]">{d.meta} · {d.date}</p></div><div className="hidden text-right sm:block"><p className="text-xs font-extrabold text-[#287354]">{d.score}</p><p className="text-[10px] text-[#9ba0a4]">SEO 점수</p></div><Badge tone={d.status === "검토 중" ? "orange" : "green"}>{d.status}</Badge></div>)}</div></div><div className="rounded-xl border border-[#e7e4de] bg-[#f7f4ef] p-6 text-[#18202b]"><div className="mb-10 flex items-start justify-between"><div><Badge tone="orange">브랜드 메모</Badge><h3 className="mt-4 font-display text-[25px] leading-tight">우리 브랜드의<br/><em className="text-[#e86550]">글쓰기 기준을 정리했어요.</em></h3></div><BookOpen size={20} className="text-[#e86550]"/></div><p className="text-xs leading-5 text-[#66717a]">등록한 12편의 글에서<br/>우리 매장의 표현 기준을 정리했어요.</p><div className="mt-5 flex flex-wrap gap-2"><span className="rounded border border-[#d9d4cc] px-2 py-1 text-[10px] text-[#606a73]">차분한</span><span className="rounded border border-[#d9d4cc] px-2 py-1 text-[10px] text-[#606a73]">진정성 있는</span><span className="rounded border border-[#d9d4cc] px-2 py-1 text-[10px] text-[#606a73]">경험 중심</span></div><button onClick={() => setSection("brands")} className="mt-6 text-[11px] font-bold text-[#e86550]">글쓰기 기준 보기 →</button></div></div></div>;
+  const recentDrafts = historyQuery.data && historyQuery.data.length > 0
+    ? historyQuery.data.slice(0, 3).map(d => ({
+        title: d.title,
+        meta: `${d.keywords ? d.keywords + " · " : ""}${d.body.length.toLocaleString()}자`,
+        score: d.seoScore || 90,
+        date: new Date(d.createdAt).toLocaleDateString("ko-KR", { month: "short", day: "numeric" }),
+        status: "저장됨"
+      }))
+    : drafts;
+  return <div className="space-y-8">
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-xl border border-[#ffd5cc] bg-[#fff8f6] p-4 text-[#18202b]">
+      <div className="flex items-center gap-3">
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[#e86550] text-white">
+          <HelpCircle size={20} />
+        </div>
+        <div>
+          <p className="text-xs font-black text-[#e86550]">Blogmate AI 이용 가이드</p>
+          <p className="text-[13px] font-bold text-[#18202b]">처음 오셨나요? 4단계 초안 작성법과 SEO 발행 꿀팁을 확인하세요.</p>
+        </div>
+      </div>
+      <button onClick={() => setSection("guide")} className="shrink-0 rounded-lg bg-[#18202b] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#283442]">
+        이용 가이드 보기 →
+      </button>
+    </div>
+    <div className="rise"><p className="mb-2 text-xs font-bold text-[#e86550]">오늘의 작업</p><h2 className="font-display text-[34px] leading-tight tracking-[-.04em] text-[#18202b]">우리 매장다운 글을<br/><em className="text-[#e86550]">꾸준히 쌓아보세요.</em></h2><p className="mt-3 max-w-md text-sm leading-6 text-[#7b838b]">브랜드의 결을 지키면서, 검색하는 고객에게 닿는 글을 만드세요.</p></div><div className="rounded-xl border border-[#e7e4de] bg-white p-5 rise rise-1"><div className="flex items-center justify-between"><div><p className="text-[10px] font-extrabold uppercase tracking-[.15em] text-[#e86550]">오늘 우선 처리</p><h3 className="mt-1 text-sm font-extrabold">지금 이어서 할 일</h3></div><span className="rounded-full bg-[#fbfaf8] px-2.5 py-1 text-[10px] font-bold text-[#858d94]">3개 항목</span></div><div className="mt-4 grid gap-2 md:grid-cols-3"><button onClick={() => setSection("generate")} className="group flex items-center gap-3 rounded-lg border border-[#eeeae5] bg-[#fffdfa] p-3 text-left transition hover:border-[#e86550] hover:bg-[#fff8f6]"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-[#fff0ec] text-[10px] font-extrabold text-[#c8513e]">01</span><span className="min-w-0 flex-1"><span className="block text-[11px] font-bold text-[#18202b]">검토 중인 초안</span><span className="mt-1 block text-[10px] leading-4 text-[#92999e]">제목과 본문을 확인해 발행하세요.</span></span><span className="text-sm text-[#e86550]">→</span></button><button onClick={() => setSection("brands")} className="group flex items-center gap-3 rounded-lg border border-[#eeeae5] bg-[#fffdfa] p-3 text-left transition hover:border-[#e86550] hover:bg-[#fff8f6]"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-[#f1eee7] text-[10px] font-extrabold text-[#6f777d]">02</span><span className="min-w-0 flex-1"><span className="block text-[11px] font-bold text-[#18202b]">브랜드 자료 추가</span><span className="mt-1 block text-[10px] leading-4 text-[#92999e]">새 글을 더해 표현 기준을 다듬으세요.</span></span><span className="text-sm text-[#e86550]">→</span></button><button onClick={() => setSection("billing")} className="group flex items-center gap-3 rounded-lg border border-[#eeeae5] bg-[#fffdfa] p-3 text-left transition hover:border-[#e86550] hover:bg-[#fff8f6]"><span className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-[#eef3f7] text-[10px] font-extrabold text-[#5f7485]">03</span><span className="min-w-0 flex-1"><span className="block text-[11px] font-bold text-[#18202b]">구독 상태 확인</span><span className="mt-1 block text-[10px] leading-4 text-[#92999e]">남은 생성량과 이용 종료일을 확인하세요.</span></span><span className="text-sm text-[#e86550]">→</span></button></div></div><div className="grid gap-4 sm:grid-cols-3 rise rise-2"><div className="rounded-xl border border-[#e7e4de] bg-white p-5"><div className="mb-5 flex items-center justify-between"><span className="text-xs font-bold text-[#8b9298]">이번 달 잔여 생성</span><FileText size={17} className="text-[#e86550]"/></div><p className="text-[28px] font-extrabold tracking-tight">{remaining} <span className="text-sm font-medium text-[#a5aaad]">건 남음</span></p><div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#efeee9]"><div className="h-full rounded-full bg-[#e86550] transition-all" style={{ width: `${usagePercent}%` }}/></div><p className="mt-2 text-[11px] font-semibold text-[#33805e]">{used}/12건 사용 <span className="text-[#a1a6a9]">이번 달</span></p></div><div className="rounded-xl border border-[#e7e4de] bg-white p-5"><div className="mb-5 flex items-center justify-between"><span className="text-xs font-bold text-[#8b9298]">평균 SEO 점수</span><Target size={17} className="text-[#e86550]"/></div><p className="text-[28px] font-extrabold tracking-tight">91<span className="text-sm font-medium text-[#a5aaad]">/100</span></p><p className="mt-2 text-[11px] font-semibold text-[#33805e]">↑ 6점 <span className="text-[#a1a6a9]">지난달 대비</span></p></div><div className="rounded-xl border border-[#e7e4de] bg-white p-5"><div className="mb-5 flex items-center justify-between"><span className="text-xs font-bold text-[#8b9298]">활성 브랜드</span><BookOpen size={17} className="text-[#e86550]"/></div><p className="text-[28px] font-extrabold tracking-tight">3 <span className="text-sm font-medium text-[#a5aaad]">개</span></p><p className="mt-2 text-[11px] font-semibold text-[#a1a6a9]">총 5개까지 관리 가능</p></div></div><div className="grid gap-5 lg:grid-cols-[1.35fr_1fr] rise rise-3"><div className="rounded-xl border border-[#e7e4de] bg-white"><div className="flex items-center justify-between border-b border-[#eeeae5] px-5 py-4"><div><h3 className="text-sm font-extrabold">최근 생성한 초안</h3><p className="mt-1 text-[11px] text-[#959ba0]">브랜드의 다음 발행을 준비하세요.</p></div><button onClick={() => setSection("history")} className="text-[11px] font-bold text-[#e86550]">전체 보기 →</button></div><div className="divide-y divide-[#f0ede9]">{recentDrafts.map(d => <div key={d.title} onClick={() => setSection("history")} className="flex cursor-pointer items-center gap-3 px-5 py-4 transition hover:bg-[#fffdfa]"><div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#fff1ed] text-[#e86550]"><FileText size={15}/></div><div className="min-w-0 flex-1"><p className="truncate text-[12px] font-bold">{d.title}</p><p className="mt-1 text-[10px] text-[#989da1]">{d.meta} · {d.date}</p></div><div className="hidden text-right sm:block"><p className="text-xs font-extrabold text-[#287354]">{d.score}</p><p className="text-[10px] text-[#9ba0a4]">SEO 점수</p></div><Badge tone={d.status === "검토 중" ? "orange" : "green"}>{d.status}</Badge></div>)}</div></div><div className="rounded-xl border border-[#e7e4de] bg-[#f7f4ef] p-6 text-[#18202b]"><div className="mb-10 flex items-start justify-between"><div><Badge tone="orange">브랜드 메모</Badge><h3 className="mt-4 font-display text-[25px] leading-tight">우리 브랜드의<br/><em className="text-[#e86550]">글쓰기 기준을 정리했어요.</em></h3></div><BookOpen size={20} className="text-[#e86550]"/></div><p className="text-xs leading-5 text-[#66717a]">등록한 12편의 글에서<br/>우리 매장의 표현 기준을 정리했어요.</p><div className="mt-5 flex flex-wrap gap-2"><span className="rounded border border-[#d9d4cc] px-2 py-1 text-[10px] text-[#606a73]">차분한</span><span className="rounded border border-[#d9d4cc] px-2 py-1 text-[10px] text-[#606a73]">진정성 있는</span><span className="rounded border border-[#d9d4cc] px-2 py-1 text-[10px] text-[#606a73]">경험 중심</span></div><button onClick={() => setSection("brands")} className="mt-6 text-[11px] font-bold text-[#e86550]">글쓰기 기준 보기 →</button></div></div></div>;
 }
 
 function Generate() {
@@ -63,7 +90,14 @@ function Generate() {
   const [length, setLength] = useState("1,500자");
   const [generated, setGenerated] = useState(false);
   const [copied, setCopied] = useState(""); const [titleCandidates, setTitleCandidates] = useState<string[]>([]);
-  const saveDraft = trpc.content.save.useMutation({ onSuccess: () => toast.success("초안 이력에 저장했어요."), onError: error => toast.error(error.message || "초안 저장에 실패했습니다.") });
+  const utils = trpc.useUtils();
+  const saveDraft = trpc.content.save.useMutation({
+    onSuccess: async () => {
+      await utils.content.history.invalidate();
+      toast.success("초안 이력에 저장했어요.");
+    },
+    onError: error => toast.error(error.message || "초안 저장에 실패했습니다.")
+  });
   const generateDraft = trpc.content.generate.useMutation({
     onSuccess: result => {
       const draft = result.draft as Partial<typeof sections>;
@@ -82,9 +116,548 @@ function Generate() {
   const field = (label: string, key: keyof typeof sections, large = false) => <div><div className="mb-2 flex items-center justify-between"><span className="text-[10px] font-extrabold uppercase tracking-[.14em] text-[#a0a4a7]">{label}</span><button onClick={() => copy(key)} className="flex items-center gap-1 text-[10px] font-bold text-[#e86550]">{copied === key ? <Check size={12}/> : <Clipboard size={12}/>} {copied === key ? "복사됨" : "복사"}</button></div><textarea value={sections[key]} onChange={e => update(key, e.target.value)} rows={large ? 4 : 2} className="w-full resize-y rounded-lg border border-[#e7e4de] bg-[#fffdfa] px-3 py-2.5 text-[13px] leading-6 text-[#4f5963] outline-none transition focus:border-[#e86550] focus:ring-2 focus:ring-[#e86550]/10"/></div>;
   return <div className="grid gap-5 xl:grid-cols-[360px_1fr]"><div className="rounded-xl border border-[#e7e4de] bg-white p-5"><div className="mb-6"><p className="text-[11px] font-extrabold uppercase tracking-[.16em] text-[#e86550]">초안 작업</p><h2 className="mt-2 text-[21px] font-extrabold tracking-[-.04em]">새 초안 만들기</h2><p className="mt-2 text-xs leading-5 text-[#888f96]">브랜드 정보와 톤을 반영해<br/>검색 의도에 맞는 글을 설계합니다.</p></div><label className="mb-1.5 block text-[11px] font-bold text-[#606a73]">브랜드</label><select required value={selectedBrandId || ""} onChange={e => setBrandId(Number(e.target.value))} className="mb-5 flex w-full items-center justify-between rounded-lg border border-[#e7e4de] bg-[#fbfaf8] px-3 py-2.5 text-xs font-bold outline-none focus:border-[#e86550]"><option value="" disabled>등록된 브랜드를 선택하세요</option>{brandList.data?.map(brand => <option key={brand.id} value={brand.id}>{brand.name}</option>)}</select><label className="mb-1.5 block text-[11px] font-bold text-[#606a73]">핵심 키워드</label><input value={keyword} onChange={e => setKeyword(e.target.value)} className="mb-3 w-full rounded-lg border border-[#e7e4de] px-3 py-2.5 text-xs outline-none focus:border-[#e86550]"/><div className="mb-5 flex flex-wrap gap-1.5"><Badge tone="orange">{keyword || "키워드"}</Badge><Badge>성수동 데이트</Badge><button className="grid h-6 w-6 place-items-center rounded-full border border-dashed border-[#b8bdc0] text-[#94999d]"><Plus size={12}/></button></div><label className="mb-1.5 block text-[11px] font-bold text-[#606a73]">글의 목적</label><div className="mb-5 grid grid-cols-2 gap-2">{["정보 제공", "방문 유도", "후기·리뷰", "이벤트"].map(x => <button key={x} onClick={() => setPurpose(x)} className={`rounded-lg border px-2 py-2 text-[11px] font-bold ${purpose === x ? "border-[#e86550] bg-[#fff1ed] text-[#c8513e]" : "border-[#e7e4de] text-[#858c92]"}`}>{x}</button>)}</div><label className="mb-1.5 block text-[11px] font-bold text-[#606a73]">분량</label><select value={length} onChange={e => setLength(e.target.value)} className="mb-6 w-full rounded-lg border border-[#e7e4de] bg-white px-3 py-2.5 text-xs font-semibold outline-none"><option>1,000자</option><option>1,500자</option><option>2,000자</option><option>2,500자</option></select><Button disabled={generateDraft.isPending || !selectedBrandId} onClick={() => generateDraft.mutate({ brandId: selectedBrandId, brand: { name: selectedBrand?.name ?? "", industry: "도자기 공방", services: "원데이클래스", audience: "성수동 데이트 고객", strengths: "초보자 친화 수업", tone: "따뜻하고 차분한 존댓말" }, primaryKeyword: keyword, secondaryKeywords: ["성수동 데이트"], purpose, length, regenerate: generated })} className="w-full gap-2 rounded-lg bg-[#18202b] py-5 text-xs font-bold hover:bg-[#283442]"><PenLine size={15}/> {generateDraft.isPending ? "초안을 준비하는 중..." : generated ? "초안 다시 생성하기" : "초안 생성하기"} <span className="ml-auto rounded bg-white/10 px-2 py-0.5 text-[10px]">1건 차감</span></Button><p className="mt-3 text-center text-[10px] text-[#9da2a6]">브랜드별 월 12건 기준으로 차감됩니다.</p></div><div className="rounded-xl border border-[#e7e4de] bg-white"><div className="flex items-center justify-between border-b border-[#eeeae5] px-6 py-4"><div><div className="flex items-center gap-2"><Badge tone="green">{generated ? "방금 생성됨" : "최근 초안"}</Badge><span className="text-[10px] font-bold text-[#287354]">SEO {Math.max(0, 100 - (audit.repetitionStatus === "review" ? 8 : 0) - (audit.readabilityStatus === "review" ? 6 : 0))}</span></div><p className="mt-2 text-[10px] text-[#8e969c]">현재 글 · {audit.characterCount.toLocaleString()}자 · {audit.keywordCount}회 키워드</p></div><div className="flex items-center gap-2"><button onClick={() => saveDraft.mutate({ brandId: selectedBrandId, title: sections.title, intro: sections.intro, body: sections.body, ending: sections.ending, hashtags: sections.hashtags, keywords: keyword, seoScore: Math.max(0, 100 - (audit.repetitionStatus === "review" ? 8 : 0) - (audit.readabilityStatus === "review" ? 6 : 0)) })} disabled={saveDraft.isPending || !selectedBrandId} className="rounded-lg bg-[#e86550] px-3 py-2 text-[11px] font-bold text-white">{saveDraft.isPending ? "저장 중..." : "이력 저장"}</button><button onClick={() => copy("body")} className="rounded-lg border border-[#e7e4de] px-3 py-2 text-[11px] font-bold text-[#606a73]">전체 복사</button></div></div><div className="space-y-5 px-6 py-5"><div className="rounded-lg bg-[#fff8f6] p-4"><div className="mb-3 flex items-center justify-between"><strong className="text-xs text-[#18202b]">추천 제목 3개</strong><span className="text-[10px] text-[#9a817b]">하나를 선택해 적용하세요.</span></div><div className="space-y-2">{(titleCandidates.length ? titleCandidates : [sections.title]).map((candidate, index) => <button type="button" key={candidate + index} onClick={() => update("title", candidate)} className={`w-full rounded-lg border px-3 py-2.5 text-left text-xs leading-5 transition ${sections.title === candidate ? "border-[#e86550] bg-white font-bold text-[#c8513e]" : "border-[#f0d8d2] bg-white/60 text-[#606a73] hover:border-[#e86550]"}`}><span className="mr-2 text-[10px] font-black text-[#e86550]">0{index + 1}</span>{candidate}</button>)}</div></div>{field("제목", "title")} {field("도입부", "intro", true)} {field("본문", "body", true)} {field("마무리", "ending", true)} {field("해시태그", "hashtags")}<div className="rounded-lg bg-[#fbfaf8] p-3 text-[10px] leading-5 text-[#858d94]"><strong className="text-[#18202b]">SEO 실시간 점검</strong><br/>{audit.repetitionStatus === "healthy" ? "키워드 반복은 자연스러운 범위예요." : "키워드 반복을 줄여보세요."} {audit.readabilityStatus === "healthy" ? "문단 길기도 읽기 편합니다." : "문단을 조금 더 나눠보세요."}</div></div></div></div>;
 }
+
+function History({ setSection }: { setSection: (s: Section) => void }) {
+  const brandList = trpc.brands.list.useQuery(undefined, { retry: false });
+  const [filterBrandId, setFilterBrandId] = useState<number | null>(null);
+  const historyQuery = trpc.content.history.useQuery(
+    filterBrandId ? { brandId: filterBrandId } : undefined,
+    { retry: false }
+  );
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [copiedKey, setCopiedKey] = useState("");
+  const [copiedAll, setCopiedAll] = useState(false);
+  const utils = trpc.useUtils();
+
+  const draftList = historyQuery.data ?? [];
+  const activeDraft = draftList.find(d => d.id === selectedId) ?? draftList[0] ?? null;
+
+  const [title, setTitle] = useState("");
+  const [intro, setIntro] = useState("");
+  const [body, setBody] = useState("");
+  const [ending, setEnding] = useState("");
+  const [hashtags, setHashtags] = useState("");
+  const [keywords, setKeywords] = useState("");
+
+  useEffect(() => {
+    if (activeDraft) {
+      setTitle(activeDraft.title);
+      setIntro(activeDraft.intro);
+      setBody(activeDraft.body);
+      setEnding(activeDraft.ending);
+      setHashtags(activeDraft.hashtags);
+      setKeywords(activeDraft.keywords);
+    }
+  }, [activeDraft?.id]);
+
+  const updateMutation = trpc.content.update.useMutation({
+    onSuccess: async () => {
+      await utils.content.history.invalidate();
+      toast.success("초안 수정을 저장했어요.");
+    },
+    onError: error => toast.error(error.message || "초안 수정에 실패했습니다."),
+  });
+
+  const fullText = [title, intro, body, ending].join("\n\n");
+  const audit = auditDraft(fullText, keywords || title);
+
+  const copyField = (key: string, val: string) => {
+    navigator.clipboard?.writeText(val);
+    setCopiedKey(key);
+    toast.success("클립보드에 복사했어요.");
+    setTimeout(() => setCopiedKey(""), 1200);
+  };
+
+  const copyFull = () => {
+    const full = [title, intro, body, ending, hashtags].filter(Boolean).join("\n\n");
+    navigator.clipboard?.writeText(full);
+    setCopiedAll(true);
+    toast.success("전체 초안을 클립보드에 복사했어요.");
+    setTimeout(() => setCopiedAll(false), 1200);
+  };
+
+  const handleSave = () => {
+    if (!activeDraft) return;
+    updateMutation.mutate({
+      draftId: activeDraft.id,
+      title,
+      intro,
+      body,
+      ending,
+      hashtags,
+      keywords,
+      seoScore: Math.max(0, 100 - (audit.repetitionStatus === "review" ? 8 : 0) - (audit.readabilityStatus === "review" ? 6 : 0)),
+    });
+  };
+
+  const getBrandName = (brandId: number) => {
+    const brand = brandList.data?.find(b => b.id === brandId);
+    return brand ? brand.name : `브랜드 #${brandId}`;
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-bold text-[#e86550]">작업 이력</p>
+          <h2 className="mt-2 text-2xl font-extrabold tracking-[-.05em] text-[#18202b]">생성 이력</h2>
+          <p className="mt-2 text-xs text-[#8a9197]">이전에 생성하고 저장한 초안을 다시 열어 확인하고, 수정하거나 복사하세요.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-bold text-[#606a73] hidden sm:inline">브랜드 필터</label>
+          <select
+            value={filterBrandId ?? ""}
+            onChange={e => {
+              const val = e.target.value;
+              setFilterBrandId(val ? Number(val) : null);
+            }}
+            className="rounded-lg border border-[#e7e4de] bg-white px-3 py-2 text-xs font-bold text-[#18202b] outline-none focus:border-[#e86550]"
+          >
+            <option value="">모든 브랜드 ({draftList.length})</option>
+            {brandList.data?.map(b => (
+              <option key={b.id} value={b.id}>{b.name}</option>
+            ))}
+          </select>
+          <Button
+            onClick={() => setSection("generate")}
+            variant="outline"
+            className="h-9 gap-1.5 rounded-lg border-[#e7e4de] bg-white px-3 text-xs font-bold text-[#606a73]"
+          >
+            <PenLine size={14} /> 새 초안 만들기
+          </Button>
+        </div>
+      </div>
+
+      {draftList.length === 0 ? (
+        <div className="rounded-xl border border-[#e7e4de] bg-white p-12 text-center">
+          <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-[#fff0ec] text-[#e86550]">
+            <FileText size={24} />
+          </div>
+          <h3 className="text-base font-extrabold text-[#18202b]">저장된 초안이 없습니다</h3>
+          <p className="mt-2 text-xs text-[#7b838b]">
+            새 초안 만들기 화면에서 글을 생성한 뒤 ‘이력 저장’ 버튼을 누르면 여기에 보관됩니다.
+          </p>
+          <Button
+            onClick={() => setSection("generate")}
+            className="mt-6 gap-1.5 rounded-lg bg-[#e86550] px-4 py-2 text-xs font-bold text-white hover:bg-[#d95744]"
+          >
+            <PenLine size={14} /> 새 초안 만들러 가기
+          </Button>
+        </div>
+      ) : (
+        <div className="grid gap-5 xl:grid-cols-[360px_1fr]">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-[11px] font-extrabold uppercase tracking-[.15em] text-[#9a9d9f]">
+                저장된 초안 ({draftList.length})
+              </span>
+            </div>
+            <div className="space-y-2 max-h-[780px] overflow-y-auto pr-1">
+              {draftList.map(draft => {
+                const isSelected = activeDraft?.id === draft.id;
+                const createdDate = new Date(draft.createdAt).toLocaleDateString("ko-KR", {
+                  month: "short",
+                  day: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
+                return (
+                  <div
+                    key={draft.id}
+                    onClick={() => setSelectedId(draft.id)}
+                    className={`cursor-pointer rounded-xl border p-4 text-left transition ${
+                      isSelected
+                        ? "border-[#e86550] bg-[#fff8f6] shadow-sm"
+                        : "border-[#e7e4de] bg-white hover:border-[#e86550]/60 hover:bg-[#fffdfa]"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <Badge tone="orange">{getBrandName(draft.brandId)}</Badge>
+                      <span className="text-[10px] font-bold text-[#287354]">
+                        SEO {draft.seoScore}
+                      </span>
+                    </div>
+                    <h4 className="mt-2.5 line-clamp-2 text-xs font-extrabold text-[#18202b] leading-5">
+                      {draft.title}
+                    </h4>
+                    <div className="mt-3 flex items-center justify-between text-[10px] text-[#8e969c]">
+                      <span>{createdDate}</span>
+                      <span className="font-bold text-[#e86550] hover:underline">다시 열기 →</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {activeDraft && (
+            <div className="rounded-xl border border-[#e7e4de] bg-white">
+              <div className="flex flex-col gap-3 border-b border-[#eeeae5] px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone="green">{getBrandName(activeDraft.brandId)}</Badge>
+                    <span className="text-[10px] font-bold text-[#287354]">
+                      SEO {Math.max(0, 100 - (audit.repetitionStatus === "review" ? 8 : 0) - (audit.readabilityStatus === "review" ? 6 : 0))}
+                    </span>
+                    <span className="text-[10px] text-[#8e969c]">
+                      현재 {audit.characterCount.toLocaleString()}자 · 키워드 {audit.keywordCount}회
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[10px] text-[#8e969c]">
+                    등록일 {new Date(activeDraft.createdAt).toLocaleString("ko-KR")}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={copyFull}
+                    className="flex items-center gap-1.5 rounded-lg border border-[#e7e4de] bg-white px-3 py-2 text-[11px] font-bold text-[#606a73] transition hover:bg-[#fbfaf8]"
+                  >
+                    {copiedAll ? <Check size={13} className="text-[#287354]" /> : <Clipboard size={13} />}
+                    {copiedAll ? "복사 완료" : "전체 복사"}
+                  </button>
+                  <Button
+                    onClick={handleSave}
+                    disabled={updateMutation.isPending}
+                    className="h-8 gap-1.5 rounded-lg bg-[#e86550] px-3.5 text-[11px] font-bold text-white hover:bg-[#d95744]"
+                  >
+                    {updateMutation.isPending ? "저장 중..." : "수정 저장"}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-5 px-6 py-5">
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-[10px] font-extrabold uppercase tracking-[.14em] text-[#a0a4a7]">
+                      제목
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => copyField("title", title)}
+                      className="flex items-center gap-1 text-[10px] font-bold text-[#e86550]"
+                    >
+                      {copiedKey === "title" ? <Check size={12} /> : <Clipboard size={12} />}
+                      {copiedKey === "title" ? "복사됨" : "복사"}
+                    </button>
+                  </div>
+                  <textarea
+                    value={title}
+                    onChange={e => setTitle(e.target.value)}
+                    rows={2}
+                    className="w-full resize-y rounded-lg border border-[#e7e4de] bg-[#fffdfa] px-3 py-2.5 text-[13px] font-bold leading-6 text-[#18202b] outline-none transition focus:border-[#e86550] focus:ring-2 focus:ring-[#e86550]/10"
+                  />
+                </div>
+
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-[10px] font-extrabold uppercase tracking-[.14em] text-[#a0a4a7]">
+                      도입부
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => copyField("intro", intro)}
+                      className="flex items-center gap-1 text-[10px] font-bold text-[#e86550]"
+                    >
+                      {copiedKey === "intro" ? <Check size={12} /> : <Clipboard size={12} />}
+                      {copiedKey === "intro" ? "복사됨" : "복사"}
+                    </button>
+                  </div>
+                  <textarea
+                    value={intro}
+                    onChange={e => setIntro(e.target.value)}
+                    rows={3}
+                    className="w-full resize-y rounded-lg border border-[#e7e4de] bg-[#fffdfa] px-3 py-2.5 text-[13px] leading-6 text-[#4f5963] outline-none transition focus:border-[#e86550] focus:ring-2 focus:ring-[#e86550]/10"
+                  />
+                </div>
+
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-[10px] font-extrabold uppercase tracking-[.14em] text-[#a0a4a7]">
+                      본문
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => copyField("body", body)}
+                      className="flex items-center gap-1 text-[10px] font-bold text-[#e86550]"
+                    >
+                      {copiedKey === "body" ? <Check size={12} /> : <Clipboard size={12} />}
+                      {copiedKey === "body" ? "복사됨" : "복사"}
+                    </button>
+                  </div>
+                  <textarea
+                    value={body}
+                    onChange={e => setBody(e.target.value)}
+                    rows={7}
+                    className="w-full resize-y rounded-lg border border-[#e7e4de] bg-[#fffdfa] px-3 py-2.5 text-[13px] leading-6 text-[#4f5963] outline-none transition focus:border-[#e86550] focus:ring-2 focus:ring-[#e86550]/10"
+                  />
+                </div>
+
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-[10px] font-extrabold uppercase tracking-[.14em] text-[#a0a4a7]">
+                      마무리
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => copyField("ending", ending)}
+                      className="flex items-center gap-1 text-[10px] font-bold text-[#e86550]"
+                    >
+                      {copiedKey === "ending" ? <Check size={12} /> : <Clipboard size={12} />}
+                      {copiedKey === "ending" ? "복사됨" : "복사"}
+                    </button>
+                  </div>
+                  <textarea
+                    value={ending}
+                    onChange={e => setEnding(e.target.value)}
+                    rows={3}
+                    className="w-full resize-y rounded-lg border border-[#e7e4de] bg-[#fffdfa] px-3 py-2.5 text-[13px] leading-6 text-[#4f5963] outline-none transition focus:border-[#e86550] focus:ring-2 focus:ring-[#e86550]/10"
+                  />
+                </div>
+
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-[10px] font-extrabold uppercase tracking-[.14em] text-[#a0a4a7]">
+                      해시태그
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => copyField("hashtags", hashtags)}
+                      className="flex items-center gap-1 text-[10px] font-bold text-[#e86550]"
+                    >
+                      {copiedKey === "hashtags" ? <Check size={12} /> : <Clipboard size={12} />}
+                      {copiedKey === "hashtags" ? "복사됨" : "복사"}
+                    </button>
+                  </div>
+                  <textarea
+                    value={hashtags}
+                    onChange={e => setHashtags(e.target.value)}
+                    rows={2}
+                    className="w-full resize-y rounded-lg border border-[#e7e4de] bg-[#fffdfa] px-3 py-2.5 text-[13px] leading-6 text-[#4f5963] outline-none transition focus:border-[#e86550] focus:ring-2 focus:ring-[#e86550]/10"
+                  />
+                </div>
+
+                <div className="rounded-lg bg-[#fbfaf8] p-3 text-[10px] leading-5 text-[#858d94]">
+                  <strong className="text-[#18202b]">SEO 실시간 점검</strong>
+                  <br />
+                  {audit.repetitionStatus === "healthy"
+                    ? "키워드 반복은 자연스러운 범위예요."
+                    : "키워드 반복을 줄여보세요."}{" "}
+                  {audit.readabilityStatus === "healthy"
+                    ? "문단 길기도 읽기 편합니다."
+                    : "문단을 조금 더 나눠보세요."}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 function Brands({ onAddBrand }: { onAddBrand: () => void }) { const brandList = trpc.brands.list.useQuery(undefined, { retry: false }); const fallback = ["오늘의공방", "라이트영어학원", "클린홈케어"]; const brandNames = brandList.data?.length ? brandList.data.map(brand => brand.name) : fallback; const [active, setActive] = useState(0); const activeName = brandNames[active] ?? brandNames[0]; return <div className="space-y-5"><div className="flex items-end justify-between"><div><p className="text-xs font-bold text-[#e86550]">브랜드 목록</p><h2 className="mt-2 text-2xl font-extrabold tracking-[-.05em]">브랜드 & 톤 프로필</h2><p className="mt-2 text-xs text-[#8a9197]">브랜드마다 다른 결을 저장하고, 글마다 일관되게 적용하세요.</p></div><Button onClick={onAddBrand} className="gap-1.5 rounded-lg bg-[#18202b] text-xs font-bold"><Plus size={14}/> 새 브랜드</Button></div><div className="grid gap-5 lg:grid-cols-[270px_1fr]"><div className="space-y-2">{brandNames.map((x,i) => <button key={`${x}-${i}`} onClick={() => setActive(i)} className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left ${active === i ? "border-[#e86550] bg-[#fff8f6]" : "border-[#e7e4de] bg-white"}`}><div className={`grid h-9 w-9 place-items-center rounded-lg text-xs font-extrabold ${i===0?"bg-[#f4c8bd] text-[#a44c3c]":i===1?"bg-[#dbe5f3] text-[#496b97]":"bg-[#dfead9] text-[#588047]"}`}>{x[0]}</div><div><p className="text-xs font-bold">{x}</p><p className="mt-1 text-[10px] text-[#969ca1]">{i === 0 && brandList.data?.length ? "등록된 브랜드" : "브랜드 정보"}</p></div>{active===i && <Check size={15} className="ml-auto text-[#e86550]"/>}</button>)}</div><div className="rounded-xl border border-[#e7e4de] bg-white p-6"><div className="flex items-start justify-between border-b border-[#eeeae5] pb-5"><div><div className="flex items-center gap-2"><h3 className="text-lg font-extrabold">{activeName}</h3><Badge tone="green">활성</Badge></div><p className="mt-2 text-xs text-[#8d949a]">선택한 브랜드의 글쓰기 기준과 참고 자료를 관리합니다.</p></div><button className="rounded-lg border border-[#e7e4de] p-2 text-[#92979b]" aria-label="브랜드 메뉴"><MoreHorizontal size={16}/></button></div><div className="grid gap-6 py-6 md:grid-cols-2"><div><p className="mb-3 text-[10px] font-extrabold uppercase tracking-[.15em] text-[#a0a4a7]">말투 기준</p><div className="space-y-3">{[["따뜻하고 차분한",88],["경험을 나누는",76],["과장하지 않는",91]].map(([x,v])=><div key={x as string}><div className="mb-1.5 flex justify-between text-[11px] font-semibold"><span>{x}</span><span className="text-[#e86550]">{v}%</span></div><div className="h-1.5 rounded-full bg-[#efeee9]"><div className="h-full rounded-full bg-[#e86550]" style={{width:`${v}%`}}/></div></div>)}</div></div><div><p className="mb-3 text-[10px] font-extrabold uppercase tracking-[.15em] text-[#a0a4a7]">글쓰기 습관</p><div className="flex flex-wrap gap-2"><Badge>짧은 문장 위주</Badge><Badge>존댓말</Badge><Badge>소제목 활용</Badge><Badge>감각적 묘사</Badge><Badge>질문으로 마무리</Badge></div></div></div><div className="rounded-lg bg-[#fbfaf8] p-4"><div className="flex items-center gap-2 text-xs font-bold"><BookOpen size={14} className="text-[#e86550]"/> 참고한 글 <span className="ml-auto text-[10px] font-medium text-[#8e969c]">등록 후 관리</span></div><p className="mt-2 text-[11px] leading-5 text-[#7d858c]">브랜드 자료를 추가하면 이 브랜드에 맞는 표현 기준을 정리할 수 있어요.</p><button onClick={() => toast.success("글 업로드 창을 열었습니다.")} className="mt-3 text-[11px] font-bold text-[#e86550]">기존 글 추가하기 →</button></div></div></div></div> }
 
-function Seo() { const checks = [["검색 의도에 답하는 제목", true, "제목에 핵심 키워드가 자연스럽게 포함됨"],["도입부에서 주제 명확화", true, "첫 120자 안에 글의 약속이 드러남"],["키워드 과도한 반복", true, "핵심 키워드 7회 · 자연스러운 범위"],["소제목과 문단 가독성", true, "평균 문단 3.2문장 · 양호"],["복사·생성형 문장 위험", false, "유사 표현 2건을 검토해 주세요"]]; return <div className="space-y-5"><div><p className="text-xs font-bold text-[#e86550]">품질 점검</p><h2 className="mt-2 text-2xl font-extrabold tracking-[-.05em]">SEO 가이드 & 체크리스트</h2><p className="mt-2 text-xs text-[#8a9197]">검색만을 위한 글이 아니라, 읽는 사람에게 유용한 글을 기준으로 점검합니다.</p></div><div className="grid gap-5 lg:grid-cols-[1.25fr_1fr]"><div className="rounded-xl border border-[#e7e4de] bg-white p-6"><div className="mb-6 flex items-center justify-between"><div><p className="text-[10px] font-extrabold uppercase tracking-[.15em] text-[#a0a4a7]">초안 점검</p><h3 className="mt-2 text-lg font-extrabold">성수동 도자기 원데이클래스...</h3></div><div className="grid h-16 w-16 place-items-center rounded-full border-[5px] border-[#e86550] text-center"><span className="text-xl font-extrabold">94</span><span className="-mt-1 text-[8px] text-[#91989e]">/100</span></div></div><div className="space-y-1">{checks.map(([x,ok,desc])=><div key={x as string} className="flex items-start gap-3 border-t border-[#f0ede9] py-3"><div className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full ${ok?"bg-[#e3f2eb] text-[#287354]":"bg-[#fff0ec] text-[#c8513e]"}`}>{ok?<Check size={12}/>:<X size={12}/>}</div><div><p className="text-xs font-bold">{x as string}</p><p className="mt-1 text-[10px] text-[#92999e]">{desc as string}</p></div></div>)}</div></div><div className="rounded-xl border border-[#e7e4de] bg-white p-6"><div className="mb-5 flex items-center gap-2"><Lightbulb size={16} className="text-[#e86550]"/><h3 className="text-sm font-extrabold">운영 기준</h3></div><div className="space-y-4">{[["사람을 위한 콘텐츠", "검색엔진보다 먼저 독자의 질문에 답합니다."],["고유한 제목과 설명", "같은 키워드의 의미 없는 반복을 피합니다."],["구조가 보이는 글", "소제목·문단·링크로 내용을 명확히 나눕니다."],["정직한 발행", "과장·중복·자동 생성 티가 나는 표현을 줄입니다."]].map(([x,d],i)=><div key={x} className="flex gap-3"><span className="font-mono-custom pt-0.5 text-[10px] text-[#e86550]">0{i+1}</span><div><p className="text-xs font-bold">{x}</p><p className="mt-1 text-[10px] leading-5 text-[#92999e]">{d}</p></div></div>)}</div><div className="mt-6 rounded-lg bg-[#fbfaf8] p-3 text-[10px] leading-5 text-[#858d94]">기준 업데이트 <strong className="text-[#18202b]">2024.03.18</strong><br/>네이버 서치어드바이저 공개 가이드와 내부 편집 기준을 함께 반영합니다.</div></div></div></div> }
+function Guide({ setSection, onAddBrand }: { setSection: (s: Section) => void; onAddBrand: () => void }) {
+  const steps = [
+    {
+      num: "01",
+      title: "우리 매장 정보 1회 등록",
+      desc: "상호명, 서비스, 가격, 현장 노하우를 한 번만 등록하세요. 매번 프롬프트를 짤 필요 없이 우리 업체다운 말투로 글이 생성됩니다.",
+      action: "브랜드 등록하기 →",
+      onClick: onAddBrand,
+    },
+    {
+      num: "02",
+      title: "핵심 키워드 & 분량 선택",
+      desc: "고객이 검색할 핵심 단어(예: 성수동 도자기 공방)와 글의 목적(정보 제공/방문 유도), 분량(1,500자 이상)을 고르고 초안 생성을 누릅니다.",
+      action: "새 초안 만들기 →",
+      onClick: () => setSection("generate"),
+    },
+    {
+      num: "03",
+      title: "추천 제목 3개 & 실시간 SEO 점검",
+      desc: "네이버 검색 상위 노출에 최적화된 추천 제목 3개 중 하나를 고르고, 본문의 소제목 구조와 키워드 반복률을 실시간으로 확인하세요.",
+      action: "SEO 점검 가이드 →",
+      onClick: () => setSection("seo"),
+    },
+    {
+      num: "04",
+      title: "스마트에디터에 복사 & 수동 발행",
+      desc: "'전체 복사'를 누른 뒤 네이버 블로그 글쓰기 에디터에 붙여넣습니다. 본문 안내 위치([사진 1], [관련 글 링크])에 실제 매장 사진을 넣고 발행하면 끝납니다.",
+      action: "생성 이력 확인 →",
+      onClick: () => setSection("history"),
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <p className="text-xs font-bold text-[#e86550]">ONBOARDING MANUAL</p>
+        <h2 className="mt-1 text-2xl font-extrabold tracking-[-.05em] text-[#18202b]">Blogmate AI 이용 가이드</h2>
+        <p className="mt-2 text-xs leading-5 text-[#8a9197]">
+          바쁜 현장 업무 속에서도 5분 만에 상위 노출되는 네이버 블로그 글을 완성하는 실전 매뉴얼입니다.
+        </p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {steps.map((s) => (
+          <div key={s.num} className="flex flex-col justify-between rounded-xl border border-[#e7e4de] bg-white p-5 transition hover:border-[#e86550]">
+            <div>
+              <span className="inline-grid h-8 w-8 place-items-center rounded-lg bg-[#fff0ec] text-xs font-black text-[#c8513e]">
+                {s.num}
+              </span>
+              <h3 className="mt-4 text-sm font-extrabold text-[#18202b]">{s.title}</h3>
+              <p className="mt-2 text-[11px] leading-5 text-[#7a838b]">{s.desc}</p>
+            </div>
+            <button onClick={s.onClick} className="mt-5 text-left text-xs font-bold text-[#e86550] hover:underline">
+              {s.action}
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-2">
+        <div className="rounded-xl border border-[#e7e4de] bg-white p-6">
+          <div className="mb-4 flex items-center gap-2.5">
+            <div className="grid h-8 w-8 place-items-center rounded-lg bg-[#fff1ed] text-[#e86550]">
+              <Target size={16} />
+            </div>
+            <h3 className="text-sm font-extrabold text-[#18202b]">네이버 상위 노출 핵심 작성 팁</h3>
+          </div>
+          <ul className="space-y-3 text-xs leading-6 text-[#5c6670]">
+            <li className="flex items-start gap-2">
+              <span className="font-bold text-[#e86550]">•</span>
+              <span><strong>키워드 사전 확인</strong>: 글을 쓰기 전 네이버 검색창이나 키워드 도구에서 월간 검색량을 먼저 확인하세요.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="font-bold text-[#e86550]">•</span>
+              <span><strong>제목 앞단 배치</strong>: 검색 로봇과 독자가 가장 먼저 인식할 수 있도록 핵심 키워드를 제목 앞부분에 넣으세요 (30~40자 준수).</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="font-bold text-[#e86550]">•</span>
+              <span><strong>실제 현장 사진 3장</strong>: AI 생성 글에 매장/시공 현장 사진을 3장 이상 첨부하면 네이버 스마트블록 검색 지수가 대폭 상승합니다.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="font-bold text-[#e86550]">•</span>
+              <span><strong>복사 후 수동 발행</strong>: 자동 프로그램 포스팅이 아닌, 스마트에디터에 직접 복사·붙여넣기하여 안전하게 지수를 쌓으세요.</span>
+            </li>
+          </ul>
+        </div>
+
+        <div className="rounded-xl border border-[#e7e4de] bg-[#fffdfa] p-6">
+          <div className="mb-4 flex items-center gap-2.5">
+            <div className="grid h-8 w-8 place-items-center rounded-lg bg-[#eef3f7] text-[#5f7485]">
+              <Lightbulb size={16} />
+            </div>
+            <h3 className="text-sm font-extrabold text-[#18202b]">자주 묻는 질문 (FAQ)</h3>
+          </div>
+          <div className="space-y-3.5 text-xs text-[#5c6670]">
+            <div>
+              <p className="font-bold text-[#18202b]">Q. 한 달에 몇 편까지 작성할 수 있나요?</p>
+              <p className="mt-1 leading-5 text-[#7b838b]">브랜드 1개당 월 12건의 고품질 초안 생성이 제공됩니다. 주 2~3회 꾸준한 포스팅 주기에 최적화된 수량입니다.</p>
+            </div>
+            <div>
+              <p className="font-bold text-[#18202b]">Q. 초안 내용이 마음에 들지 않으면 어떻게 하나요?</p>
+              <p className="mt-1 leading-5 text-[#7b838b]">'다시 생성하기' 버튼으로 초안당 최대 3회까지 재작성이 가능하며, 본문 편집기에서 원하는 문장을 직접 수정할 수 있습니다.</p>
+            </div>
+            <div>
+              <p className="font-bold text-[#18202b]">Q. 이전 초안을 나중에 다시 볼 수 있나요?</p>
+              <p className="mt-1 leading-5 text-[#7b838b]">생성 후 '이력 저장'을 누르면 왼쪽 메뉴 '생성 이력'에 영구 보관되며 언제든 다시 열고 복사할 수 있습니다.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Seo() {
+  const checklist = [
+    { title: "키워드 검색량 사전 확인", desc: "네이버 검색창이나 키워드 도구에서 월간 검색량과 경쟁도를 확인했는가?", ok: true },
+    { title: "핵심 키워드 제목 앞부분 배치", desc: "핵심 키워드가 제목의 앞쪽에 자연스럽게 배치되어 있는가?", ok: true },
+    { title: "제목 길이 30~40자 이내", desc: "모바일과 PC 검색 화면에서 잘리지 않도록 30~40자 이내인가?", ok: true },
+    { title: "첫 문단(도입부) 키워드 포함", desc: "첫 120자(첫 문단) 안에 핵심 키워드가 자연스럽게 들어갔는가?", ok: true },
+    { title: "본문 키워드 2~3회 자연스러운 반복", desc: "과도한 남발 없이 본문 전체에 2~3회 고르게 분포되어 있는가?", ok: true },
+    { title: "글 분량 1,500자 이상", desc: "충분한 정보와 전문 지식을 담아 1,500자 이상으로 작성되었는가?", ok: true },
+    { title: "현장 이미지 3장 이상 포함", desc: "매장 전경, 시공 과정, 완성 사진 등 이미지가 3장 이상 들어갔는가?", ok: true },
+    { title: "소제목으로 글 구조화", desc: "독자가 읽기 편하도록 소제목(단락)으로 논리적 구조가 잡혀 있는가?", ok: true },
+    { title: "관련 글 링크 및 CTA 안내", desc: "함께 읽으면 좋은 이전 글 링크나 상담/예약 안내가 포함되었는가?", ok: true },
+  ];
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <p className="text-xs font-bold text-[#e86550]">SEO CHECKLIST</p>
+        <h2 className="mt-1 text-2xl font-extrabold tracking-[-.05em] text-[#18202b]">SEO 가이드 & 8대 체크리스트</h2>
+        <p className="mt-2 text-xs text-[#8a9197]">블로그 글을 네이버에 발행하기 전에 아래 필수 8대 항목을 확인하세요.</p>
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-[1.35fr_1fr]">
+        <div className="rounded-xl border border-[#e7e4de] bg-white p-6">
+          <div className="mb-5 flex items-center justify-between border-b border-[#eeeae5] pb-4">
+            <div>
+              <p className="text-[10px] font-extrabold uppercase tracking-[.15em] text-[#e86550]">네이버 발행 전 필수 점검</p>
+              <h3 className="mt-1 text-base font-extrabold text-[#18202b]">발행 전 8대 체크리스트</h3>
+            </div>
+            <span className="rounded-full bg-[#e3f2eb] px-3 py-1 text-xs font-extrabold text-[#287354]">AI 자동 준수 적용됨</span>
+          </div>
+
+          <div className="divide-y divide-[#f0ede9]">
+            {checklist.map((item, idx) => (
+              <div key={item.title} className="flex items-start gap-3 py-3.5 first:pt-0 last:pb-0">
+                <div className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#e3f2eb] text-[#287354]">
+                  <Check size={12} strokeWidth={3} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-extrabold text-[#a0a5a8]">0{idx + 1}</span>
+                    <p className="text-xs font-bold text-[#18202b]">{item.title}</p>
+                  </div>
+                  <p className="mt-1 text-[11px] leading-5 text-[#889096]">{item.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-5">
+          <div className="rounded-xl border border-[#e7e4de] bg-white p-6">
+            <div className="mb-4 flex items-center gap-2">
+              <Lightbulb size={16} className="text-[#e86550]" />
+              <h3 className="text-sm font-extrabold text-[#18202b]">네이버 상위 노출 4대 운영 기준</h3>
+            </div>
+            <div className="space-y-4">
+              {[
+                ["사람을 위한 콘텐츠", "검색엔진보다 먼저 독자의 질문과 고민에 실질적인 답을 제시합니다."],
+                ["고유한 제목과 간결성", "키워드를 제목 맨 앞에 배치하고 30~40자로 군더더기 없이 작성합니다."],
+                ["소제목 중심의 3단계 구조", "도입-본문 소제목(1,2,3)-마무리로 독자의 스크롤 체류시간을 늘립니다."],
+                ["현장감 있는 직접 촬영 사진", "AI 텍스트 사이에 실제 매장/현장 사진을 3장 이상 배치해 신뢰도를 극대화합니다."],
+              ].map(([x, d], i) => (
+                <div key={x} className="flex gap-3">
+                  <span className="font-mono-custom pt-0.5 text-[11px] font-bold text-[#e86550]">0{i + 1}</span>
+                  <div>
+                    <p className="text-xs font-bold text-[#18202b]">{x}</p>
+                    <p className="mt-1 text-[11px] leading-5 text-[#92999e]">{d}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-[#e7e4de] bg-[#fff8f6] p-5">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-extrabold text-[#c8513e]">발행 전 최종 확인</p>
+              <Target size={15} className="text-[#e86550]" />
+            </div>
+            <p className="mt-2 text-[11px] leading-5 text-[#7d858c]">
+              Blogmate AI가 추천한 제목 후보 3개와 본문 소제목 구조를 확인한 후, 스마트에디터에 복사하여 사진과 함께 발행하세요.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function Billing() { const currentSubscription = trpc.billing.current.useQuery(undefined, { retry: false }); const pendingBilling = (() => { try { const raw = sessionStorage.getItem("blogmate.pendingBilling"); if (!raw) return null; sessionStorage.removeItem("blogmate.pendingBilling"); return parseBillingSelection(raw); } catch { return null; } })(); const [plan, setPlan] = useState(pendingBilling?.plan ?? "Growth"); const [payerName, setPayerName] = useState(""); const [businessName, setBusinessName] = useState(""); const [phone, setPhone] = useState(""); const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">(pendingBilling?.billingCycle ?? "monthly"); const [privacyConsent, setPrivacyConsent] = useState(false); const requestManual = trpc.billing.requestManual.useMutation({ onSuccess: () => { toast.success("청구서 신청이 접수되었습니다. 안내톡을 확인해 주세요."); setPayerName(""); setBusinessName(""); setPhone(""); }, onError: error => toast.error(error.message || "청구서 신청에 실패했습니다.") }); return <div className="space-y-5"><div><p className="text-xs font-bold text-[#e86550]">SUBSCRIPTION</p><h2 className="mt-2 text-2xl font-extrabold tracking-[-.05em]">구독 & 이용량</h2><p className="mt-2 text-xs text-[#8a9197]">필요한 만큼 생성하고, 남은 크레딧을 한눈에 확인하세요.</p></div><form onSubmit={e => { e.preventDefault(); requestManual.mutate({ plan, amount: plan === "Starter" ? 80000 : plan === "Growth" ? 140000 : 260000, payerName, businessName, phone, billingCycle }); }} className="mb-5 rounded-xl border border-[#e7e4de] bg-white p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[10px] font-extrabold uppercase tracking-[.15em] text-[#e86550]">INVOICE REQUEST</p><h3 className="mt-1 text-sm font-extrabold">청구서 받을 정보를 남겨주세요</h3><p className="mt-1 text-[10px] text-[#92999e]">관리자가 결제선생으로 청구서를 보내고 수납 후 이용권을 승인합니다.</p></div><div className="flex gap-2"><button type="button" onClick={() => setBillingCycle("monthly")} className={`rounded-lg px-3 py-2 text-[10px] font-bold ${billingCycle === "monthly" ? "bg-[#18202b] text-white" : "border border-[#e7e4de] text-[#737c83]"}`}>월 결제</button><button type="button" onClick={() => setBillingCycle("yearly")} className={`rounded-lg px-3 py-2 text-[10px] font-bold ${billingCycle === "yearly" ? "bg-[#e86550] text-white" : "border border-[#e7e4de] text-[#737c83]"}`}>1년 결제</button></div></div><div className="mt-4 grid gap-2 sm:grid-cols-3"><input required value={payerName} onChange={e => setPayerName(e.target.value)} placeholder="이름" className="rounded-lg border border-[#e7e4de] px-3 py-2.5 text-xs outline-none focus:border-[#e86550]"/><input required value={businessName} onChange={e => setBusinessName(e.target.value)} placeholder="사업자명" className="rounded-lg border border-[#e7e4de] px-3 py-2.5 text-xs outline-none focus:border-[#e86550]"/><input required value={phone} onChange={e => setPhone(e.target.value)} placeholder="연락처" className="rounded-lg border border-[#e7e4de] px-3 py-2.5 text-xs outline-none focus:border-[#e86550]"/></div><div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div className="space-y-2"><p className="text-[10px] text-[#8d969c]">{billingCycle === "yearly" ? "1년 결제는 관리자 승인 후 1년 동안 자동 활성화됩니다." : "월 결제는 관리자 승인 후 1개월 동안 활성화됩니다."}</p><label className="flex items-start gap-2 text-[10px] leading-5 text-[#727c83]"><input required type="checkbox" checked={privacyConsent} onChange={e => setPrivacyConsent(e.target.checked)} className="mt-1 h-4 w-4 accent-[#e86550] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e86550] focus-visible:ring-offset-2"/><span>개인정보 수집·이용 안내를 확인했습니다. <a href="/privacy" target="_blank" rel="noreferrer" className="font-bold text-[#e86550] underline underline-offset-2">처리방침 보기</a></span></label></div><button disabled={requestManual.isPending || !privacyConsent} type="submit" className="rounded-lg bg-[#e86550] px-4 py-2.5 text-[11px] font-extrabold text-white">{requestManual.isPending ? "신청 중..." : "청구서 신청하기"}</button></div></form><div className="rounded-xl bg-[#18202b] p-6 text-white md:p-8"><div className="flex flex-col justify-between gap-6 sm:flex-row"><div><Badge tone="orange">현재 플랜</Badge><h3 className="mt-4 text-2xl font-extrabold">{currentSubscription.data?.plan ?? "Growth"}</h3><p className="mt-2 text-xs text-[#b6bdc2]">브랜드 {currentSubscription.data?.brandSlots ?? 2}개 · 브랜드당 월 12건</p><p className={`mt-2 text-[10px] font-semibold ${currentSubscription.data?.isExpired ? "text-[#f49c8b]" : "text-[#b6bdc2]"}`}>{currentSubscription.data?.isExpired ? "구독 만료 · 결제 후 다시 이용" : `이용 종료일 ${currentSubscription.data?.validUntil ? new Date(currentSubscription.data.validUntil).toLocaleDateString("ko-KR") : "승인 후 표시"}`}</p></div><div className="text-left sm:text-right"><p className="text-[11px] text-[#adb5bb]">다음 결제일</p><p className="mt-1 text-sm font-bold">2024년 4월 20일</p><button onClick={() => toast.info("결제 관리 화면을 준비 중입니다.")} className="mt-3 text-[11px] font-bold text-[#f49c8b]">결제 수단 관리 →</button></div></div><div className="mt-8 border-t border-white/10 pt-5"><div className="mb-2 flex justify-between text-[11px] font-bold"><span>이번 달 사용량</span><span>68 / 100</span></div><div className="h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full w-[68%] rounded-full bg-[#e86550]"/></div><p className="mt-2 text-[10px] text-[#9ca5ab]">다음 충전까지 32 credits 남음</p></div></div><div className="grid gap-4 md:grid-cols-3">{[["Starter","₩80,000","브랜드 1개 · 월 12건","개인 사업자에게"],["Growth","₩140,000","브랜드 2개 · 각각 월 12건","꾸준한 발행을 위해"],["Studio","₩260,000","브랜드 5개 · 각각 월 12건","여러 브랜드를 한 번에"]].map(([p,price,credits,desc])=><div key={p} className={`rounded-xl border p-5 ${plan===p?"border-[#e86550] bg-[#fff8f6]":"border-[#e7e4de] bg-white"}`}><div className="flex justify-between"><h3 className="text-sm font-extrabold">{p}</h3>{p==="Growth"&&<Badge tone="orange">추천</Badge>}</div><p className="mt-4 text-2xl font-extrabold">{price}<span className="text-[10px] font-medium text-[#92999e]"> /월</span></p><p className="mt-2 text-[11px] font-bold text-[#e86550]">{credits}</p><p className="mt-1 text-[10px] text-[#92999e]">{desc}</p><button onClick={() => {setPlan(p); toast.success(`${p} 플랜을 선택했습니다. 결제 단계로 이동합니다.`)}} className={`mt-5 w-full rounded-lg py-2.5 text-[11px] font-bold ${plan===p?"bg-[#18202b] text-white":"border border-[#e7e4de] text-[#606a73]"}`}>{plan===p?"현재 플랜":"플랜 선택"}</button></div>)}</div><div className="rounded-lg bg-[#fff8f6] p-4 text-[10px] leading-5 text-[#737d85]"><strong className="text-[#18202b]">브랜드별 이용 정책</strong><br/>월 12건은 계정 전체가 아니라 브랜드 하나마다 적용됩니다. 추가 브랜드는 Starter 기준 월 60,000원부터 별도 추가할 수 있으며, 실제 가격은 플랜과 결제 계약에 따라 확정됩니다.</div><p className="flex items-center gap-1 text-[10px] text-[#9ca2a6]"><LockKeyhole size={11}/> 국내 결제수단의 결제 요청·성공·실패 상태를 지원합니다.</p></div> }
 
@@ -122,4 +695,4 @@ function BrandCreateDialog({ open, onClose }: { open: boolean; onClose: () => vo
     <div className="mt-8 flex items-center justify-between gap-3 border-t border-[#e9e5df] pt-5"><button type="button" onClick={step === 0 ? close : () => setStep(prev => prev - 1)} className="rounded-xl border border-[#e2ddd6] bg-white px-4 py-3 text-xs font-extrabold text-[#68727a]">{step === 0 ? "나중에 하기" : "이전"}</button>{step < 5 ? <button type="button" onClick={next} className="rounded-xl bg-[#18202b] px-5 py-3 text-xs font-extrabold text-white shadow-[0_6px_14px_rgba(24,32,43,.14)] transition hover:bg-[#2d3845]">저장 후 계속</button> : <button type="submit" disabled={createBrand.isPending} className="rounded-xl bg-[#e86550] px-5 py-3 text-xs font-extrabold text-white shadow-[0_6px_14px_rgba(232,101,80,.18)] transition hover:bg-[#d95744]">{createBrand.isPending ? "저장하는 중..." : "업체 정보 저장하기"}</button>}</div>
   </form></div></div>;
 }
-export default function Home() { const [brandDialogOpen, setBrandDialogOpen] = useState(false); const [section, setSection] = useState<Section>(() => { try { return sessionStorage.getItem("blogmate.pendingBilling") ? "billing" : "overview"; } catch { return "overview"; } }); const [open, setOpen] = useState(false); const content = useMemo(() => ({ overview: <Overview setSection={setSection}/>, generate: <Generate/>, brands: <Brands onAddBrand={() => setBrandDialogOpen(true)}/>, toolkit: <ContentEnhancements/>, visual: <VisualStudio/>, seo: <Seo/>, billing: <Billing/>, admin: <Admin/> }[section]), [section]); return <div className="flex min-h-screen bg-[#f8f7f4]"><Sidebar section={section} setSection={setSection} open={open} setOpen={setOpen}/>{open && <div onClick={() => setOpen(false)} className="fixed inset-0 z-20 bg-[#18202b]/20 lg:hidden"/>}<main className="min-w-0 flex-1"><Topbar section={section} setOpen={setOpen} onAddBrand={() => setBrandDialogOpen(true)}/><div className="mx-auto max-w-[1240px] p-5 lg:p-10">{content}</div></main><BrandCreateDialog open={brandDialogOpen} onClose={() => setBrandDialogOpen(false)}/></div> }
+export default function Home() { const [brandDialogOpen, setBrandDialogOpen] = useState(false); const [section, setSection] = useState<Section>(() => { try { return sessionStorage.getItem("blogmate.pendingBilling") ? "billing" : "overview"; } catch { return "overview"; } }); const [open, setOpen] = useState(false); const content = useMemo(() => ({ overview: <Overview setSection={setSection}/>, guide: <Guide setSection={setSection} onAddBrand={() => setBrandDialogOpen(true)}/>, generate: <Generate/>, history: <History setSection={setSection}/>, brands: <Brands onAddBrand={() => setBrandDialogOpen(true)}/>, toolkit: <ContentEnhancements/>, visual: <VisualStudio/>, seo: <Seo/>, billing: <Billing/>, admin: <Admin/> }[section]), [section]); return <div className="flex min-h-screen bg-[#f8f7f4]"><Sidebar section={section} setSection={setSection} open={open} setOpen={setOpen}/>{open && <div onClick={() => setOpen(false)} className="fixed inset-0 z-20 bg-[#18202b]/20 lg:hidden"/>}<main className="min-w-0 flex-1"><Topbar section={section} setOpen={setOpen} onAddBrand={() => setBrandDialogOpen(true)}/><div className="mx-auto max-w-[1240px] p-5 lg:p-10">{content}</div></main><BrandCreateDialog open={brandDialogOpen} onClose={() => setBrandDialogOpen(false)}/></div> }

@@ -7,7 +7,7 @@ import { protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { invokeTextModel, parseModelJson } from "./aiProvider";
 import { parseBrandBrief, serializeBrandBrief } from "@shared/brandBrief";
 import { generateImage } from "./_core/imageGeneration";
-import { createBrandProfile, getBrandProfile, updateBrandProfile, getSubscription, getToneProfile, listBrandProfiles, listDraftHistories, saveDraftHistory, saveToneProfile, reserveDraftRegeneration, releaseDraftRegeneration, reserveMonthlyGeneration, releaseMonthlyGeneration, createPaymentRequest, listPaymentRequests, markPaymentSent, markPaymentPaid, reviewPaymentRequest, getMonthlyUsage } from "./db";
+import { createBrandProfile, getBrandProfile, updateBrandProfile, getSubscription, getToneProfile, listBrandProfiles, listDraftHistories, getDraftHistory, updateDraftHistory, saveDraftHistory, saveToneProfile, reserveDraftRegeneration, releaseDraftRegeneration, reserveMonthlyGeneration, releaseMonthlyGeneration, createPaymentRequest, listPaymentRequests, markPaymentSent, markPaymentPaid, reviewPaymentRequest, getMonthlyUsage } from "./db";
 const brandBriefSchema = z.object({
   location: z.string().optional(), address: z.string().optional(), phone: z.string().optional(), website: z.string().optional(), businessHours: z.string().optional(), priceInfo: z.string().optional(), uniquePoints: z.string().optional(), brandStory: z.string().optional(), primaryKeywords: z.string().optional(), secondaryKeywords: z.string().optional(), customerQuestions: z.string().optional(), factsToUse: z.string().optional(), forbiddenClaims: z.string().optional(), toneNotes: z.string().optional(), callToAction: z.string().optional(),
   services: z.array(z.object({ name: z.string(), description: z.string().optional(), price: z.string().optional(), duration: z.string().optional(), audience: z.string().optional(), notes: z.string().optional() })).optional(), expertise: z.string().optional(), faqs: z.array(z.object({ question: z.string(), answer: z.string() })).optional(), verifiedFacts: z.array(z.string()).optional(), sourceLinks: z.array(z.string().url()).optional(),
@@ -51,8 +51,23 @@ export const appRouter = router({
       try {
       const response = await invokeTextModel({
         messages: [
-          { role: "system", content: "당신은 네이버 블로그 편집자입니다. 검색엔진만을 위한 키워드 나열을 피하고 독자에게 유용한 한국어 콘텐츠를 작성합니다. 반드시 JSON 형식으로 titleCandidates(제목 3개 배열), title, intro, body, ending, hashtags를 반환합니다." },
-          { role: "user", content: `브랜드: ${JSON.stringify(brand)}\n핵심 키워드: ${input.primaryKeyword}\n보조 키워드: ${input.secondaryKeywords.join(", ")}\n목적: ${input.purpose}\n분량: ${input.length}\n상세 업체 브리프: ${JSON.stringify(brand.brief ?? {})}\n톤: ${input.brand.tone ?? "차분하고 진정성 있는 존댓말"}` },
+          {
+            role: "system",
+            content: `당신은 네이버 블로그 전문 편집자입니다. 검색엔진만을 위한 단순 키워드 나열을 엄격히 피하고, 독자에게 신뢰를 주는 한국어 비즈니스 콘텐츠를 작성합니다.
+다음의 [네이버 블로그 SEO 필수 8대 체크리스트]를 반드시 준수하여 작성해야 합니다:
+1. 제목 작성: 핵심 키워드를 반드시 제목의 앞부분에 배치하고, 길이는 30~40자 이내로 간결하고 클릭하고 싶게 작성할 것 (후보 3개 모두 준수).
+2. 도입부(intro): 첫 문단에 핵심 키워드를 반드시 자연스럽게 포함할 것.
+3. 본문(body) 키워드: 본문 전체에 걸쳐 핵심 키워드를 어색하지 않게 2~3회 자연스럽게 반복할 것 (과도한 반복 금지).
+4. 본문 구조: 명확한 소제목(소제목1, 소제목2 등)을 사용하여 내용을 3단계 이상 논리적으로 구조화할 것.
+5. 이미지 배치: 본문 중간에 독자의 이해를 돕는 사진 삽입 위치(예: [사진 1: 현장 시공 전 모습], [사진 2: 세부 작업 과정], [사진 3: 완성된 공간 전경])를 3장 이상 명시할 것.
+6. 관련 글 링크: 본문 끝이나 단락 사이에 자연스럽게 참고할 수 있는 [관련 글: 함께 읽으면 도움되는 시공/상담 사례 링크] 안내를 포함할 것.
+7. 분량: 전체 글은 풍부한 정보와 현장감을 담아 1,500자 이상의 충분한 길이로 작성할 것.
+8. 반환 형식: 반드시 JSON 형식으로 titleCandidates(제목 3개 배열), title, intro, body, ending, hashtags를 반환합니다.`
+          },
+          {
+            role: "user",
+            content: `브랜드: ${JSON.stringify(brand)}\n핵심 키워드: ${input.primaryKeyword}\n보조 키워드: ${input.secondaryKeywords.join(", ")}\n목적: ${input.purpose}\n분량: ${input.length}\n상세 업체 브리프: ${JSON.stringify(brand.brief ?? {})}\n톤: ${input.brand.tone ?? "차분하고 진정성 있는 존댓말"}\n\n위 정보를 바탕으로 8대 SEO 체크리스트(제목 앞 키워드 배치 및 30~40자 이내, 첫 문단 키워드 포함, 본문 키워드 2~3회, 소제목 구조화, 이미지 3장 이상 안내, 관련 링크 안내, 1,500자 이상)를 엄격히 적용해 작성해 주세요.`
+          },
         ],
         response_format: { type: "json_schema", json_schema: { name: "naver_blog_draft", strict: true, schema: { type: "object", properties: { titleCandidates: { type: "array", items: { type: "string" }, minItems: 3, maxItems: 3 }, title: { type: "string" }, intro: { type: "string" }, body: { type: "string" }, ending: { type: "string" }, hashtags: { type: "string" } }, required: ["titleCandidates", "title", "intro", "body", "ending", "hashtags"], additionalProperties: false } } },
       });
@@ -66,7 +81,27 @@ export const appRouter = router({
       }
     }),
     save: protectedProcedure.input(z.object({ brandId: z.number(), title: z.string(), intro: z.string(), body: z.string(), ending: z.string(), hashtags: z.string(), keywords: z.string(), seoScore: z.number() })).mutation(({ ctx, input }) => saveDraftHistory({ ...input, userId: ctx.user.id })),
-    history: protectedProcedure.query(({ ctx }) => listDraftHistories(ctx.user.id)),
+    history: protectedProcedure.input(z.object({ brandId: z.number().optional() }).optional()).query(({ ctx, input }) => listDraftHistories(ctx.user.id, input?.brandId)),
+    get: protectedProcedure.input(z.object({ draftId: z.number().int().positive() })).query(async ({ ctx, input }) => {
+      const draft = await getDraftHistory(ctx.user.id, input.draftId);
+      if (!draft) throw new TRPCError({ code: "NOT_FOUND", message: "초안을 찾을 수 없습니다." });
+      return draft;
+    }),
+    update: protectedProcedure.input(z.object({
+      draftId: z.number().int().positive(),
+      title: z.string().min(1),
+      intro: z.string(),
+      body: z.string().min(1),
+      ending: z.string(),
+      hashtags: z.string(),
+      keywords: z.string().optional(),
+      seoScore: z.number().optional(),
+    })).mutation(async ({ ctx, input }) => {
+      const { draftId, ...data } = input;
+      const updated = await updateDraftHistory(ctx.user.id, draftId, data);
+      if (!updated) throw new TRPCError({ code: "NOT_FOUND", message: "수정할 초안을 찾을 수 없거나 수정 권한이 없습니다." });
+      return { success: true, draft: updated };
+    }),
     generateVisual: protectedProcedure.input(z.object({ prompt: z.string().min(1), originalImageUrl: z.string().url().optional() })).mutation(async ({ input }) => generateImage({ prompt: input.prompt, originalImages: input.originalImageUrl ? [{ url: input.originalImageUrl, mimeType: "image/jpeg" }] : undefined })),
     analyzeUrl: protectedProcedure.input(z.object({ url: z.string().url() })).mutation(async ({ input }) => {
       const parsed = new URL(input.url);
